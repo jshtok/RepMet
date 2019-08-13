@@ -142,6 +142,13 @@ def load_TLrep_emb(config, vanilla_model, embed_weights_fname,epoch=0):
     #return arg_params, aux_params
 
 def load_a_model(config,model_case=0):
+
+    # load a FPN reps model for yaml 8, epoch = 15, prep representative weights
+    if model_case == 'RepMet_inloc':
+        def_model = '/dccstor/jsdata1/dev/RepMet_project/RepMet_CVPR19/data/Imagenet_LOC/fpn_pascal_imagenet'
+        epoch = 15
+        arg_params, aux_params = load_param(def_model, epoch, process=True)
+
     if model_case =='RM_fpn_JES_poc19':
         epoch = 19
         def_model = '/dccstor/jsdata1/dev/RepMet/output/fpn/JES_poc/cfg_01b/poc_train/fpn_JES_poc'
@@ -323,11 +330,6 @@ def load_a_model(config,model_case=0):
         arg_params, aux_params = load_bgw_scov_subnet(config,vanilla_model,embed_weights_fname,epoch)
 
 
-    # load a FPN reps model for yaml 8, epoch = 15, prep representative weights
-    if model_case == 200:
-        epoch = 15
-        def_model = '/dccstor/leonidka1/dev/Deformable-ConvNets/output/fpn/voc_imagenet/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8/2007_trainval_2012_trainval;train_loc/fpn_pascal_imagenet'
-        arg_params, aux_params = load_param(def_model, epoch, process=True)
 
     if model_case == 1200:
         epoch = 15
@@ -473,68 +475,69 @@ def load_roidb(case = 100):
     return roidb,classes,cls2img
 
 def config_list(config_id):
-    if config_id == 'FPN_DCN_test':
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/resnet_v1_101_coco_trainval_fpn_dcn_rep_noemb.yaml'
-    if config_id == '15_test': #216:  # our model - conf 15 - test
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_15_test.yaml'
-    if config_id == '15_Van':
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_15_Van.yaml'
-    if config_id == '19_noemb': #103: # Vanilla fpn-dcn trained on Pascal + IN-LOC,
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_noemb.yaml'
-    if config_id == '19_TLemb': # 101:  # Vanilla fpn-dcn trained on Pascal + IN-LOC, with output emb vector (256)
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_TLemb.yaml'
+    if config_id=='RepMet_inloc':
+        cfg_fname = './experiments/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8.yaml'
 
-    if config_id == 'fpn_dcn_rep_noemb': #9:
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_rep_noemb.yaml'
-    if config_id == 10: # core vanilla model trained on COCO
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/resnet_v1_101_coco_trainval_fpn_end2end_ohem.yaml'
-    if config_id == 11:  # core vanilla model trained on COCO
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/resnet_v1_101_coco_trainval_fpn_dcn_end2end_ohem_featOut.yaml'
-    if config_id == 12: # core vanilla model trained on COCO
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/resnet_v1_101_coco_trainval_fpn_dcn_end2end_ohem_FT.yaml'
-    if config_id == 19:  # core vanilla model trained on COCO without Pascal
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_16.yaml'
-    if config_id == 20:  # core vanilla model trained on COCO without Pascal
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_16_CmP.yaml'
-    if config_id == 21:  # core vanilla model trained on COCO without Pascal
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_16_CmP_Van.yaml'
-
-
-    if config_id==99:  # Vanilla fpn-dcn trained on Pascal + IN-LOC, with output FC2 feat veactor
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/cfg_2.yaml'
-    if config_id==100:  # Vanilla fpn-dcn trained on Pascal + IN-LOC, with output FC2 feat veactor
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_FeatOut.yaml'
-    if config_id==102:  # Vanilla fpn-dcn trained on Pascal + IN-LOC, with output emb vector (256)
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_TLemb1024.yaml'
-    if config_id == 1031: # Vanilla fpn-dcn trained on Pascal + IN-LOC,
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_noemb_10rRois.yaml'
-    if config_id==140:  # Vanilla fpn-dcn trained on Pascal + IN-LOC, with output emb vector (256)
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8_bkgd.yaml'
-    if config_id==142:  # Vanilla fpn-dcn trained on Pascal + IN-LOC, with output emb vector (256)
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8_scov.yaml'
-
-    if config_id==208:  # our model - conf 8
-        cfg_fname = '/dccstor/leonidka1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8.yaml'
-    if config_id==400:  # RepMet 1024 ------------------ 21_noClust
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_21_noClust.yaml'
-
-    if config_id == 214:  # our model - conf 14
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_14.yaml'
-    if config_id == 215:  # our model - conf 15
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_15.yaml'
-
-    if config_id==220:  # our model - conf 20
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_20.yaml'
-    if config_id == 221:  # our model - conf 20
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_20_hist.yaml'
-    if config_id == 2211:  # our model - conf 20
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_20_histE.yaml'
-    if config_id == 222:  # our model - conf 20
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_20_hist_tr1.yaml'
-    if config_id == 223:  # our model - conf 20
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_20_hist_tr1_w1.yaml'
-    if config_id == 224:  # our model - conf 8
-        cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8_bkgd.yaml'
+    # if config_id == 'FPN_DCN_test':
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/resnet_v1_101_coco_trainval_fpn_dcn_rep_noemb.yaml'
+    # if config_id == '15_test': #216:  # our model - conf 15 - test
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_15_test.yaml'
+    # if config_id == '15_Van':
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_15_Van.yaml'
+    # if config_id == '19_noemb': #103: # Vanilla fpn-dcn trained on Pascal + IN-LOC,
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_noemb.yaml'
+    # if config_id == '19_TLemb': # 101:  # Vanilla fpn-dcn trained on Pascal + IN-LOC, with output emb vector (256)
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_TLemb.yaml'
+    #
+    # if config_id == 'fpn_dcn_rep_noemb': #9:
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_rep_noemb.yaml'
+    # if config_id == 10: # core vanilla model trained on COCO
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/resnet_v1_101_coco_trainval_fpn_end2end_ohem.yaml'
+    # if config_id == 11:  # core vanilla model trained on COCO
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/resnet_v1_101_coco_trainval_fpn_dcn_end2end_ohem_featOut.yaml'
+    # if config_id == 12: # core vanilla model trained on COCO
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/resnet_v1_101_coco_trainval_fpn_dcn_end2end_ohem_FT.yaml'
+    # if config_id == 19:  # core vanilla model trained on COCO without Pascal
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_16.yaml'
+    # if config_id == 20:  # core vanilla model trained on COCO without Pascal
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_16_CmP.yaml'
+    # if config_id == 21:  # core vanilla model trained on COCO without Pascal
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_16_CmP_Van.yaml'
+    #
+    #
+    # if config_id==99:  # Vanilla fpn-dcn trained on Pascal + IN-LOC, with output FC2 feat veactor
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/cfg_2.yaml'
+    # if config_id==100:  # Vanilla fpn-dcn trained on Pascal + IN-LOC, with output FC2 feat veactor
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_FeatOut.yaml'
+    # if config_id==102:  # Vanilla fpn-dcn trained on Pascal + IN-LOC, with output emb vector (256)
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_TLemb1024.yaml'
+    # if config_id == 1031: # Vanilla fpn-dcn trained on Pascal + IN-LOC,
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_noemb_10rRois.yaml'
+    # if config_id==140:  # Vanilla fpn-dcn trained on Pascal + IN-LOC, with output emb vector (256)
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8_bkgd.yaml'
+    # if config_id==142:  # Vanilla fpn-dcn trained on Pascal + IN-LOC, with output emb vector (256)
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8_scov.yaml'
+    #
+    # if config_id==400:  # RepMet 1024 ------------------ 21_noClust
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_21_noClust.yaml'
+    #
+    # if config_id == 214:  # our model - conf 14
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_14.yaml'
+    # if config_id == 215:  # our model - conf 15
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_15.yaml'
+    #
+    # if config_id==220:  # our model - conf 20
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_20.yaml'
+    # if config_id == 221:  # our model - conf 20
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_20_hist.yaml'
+    # if config_id == 2211:  # our model - conf 20
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_20_histE.yaml'
+    # if config_id == 222:  # our model - conf 20
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_20_hist_tr1.yaml'
+    # if config_id == 223:  # our model - conf 20
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_20_hist_tr1_w1.yaml'
+    # if config_id == 224:  # our model - conf 8
+    #     cfg_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/experiments/fpn/cfgs/oneshot/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8_bkgd.yaml'
 
     return cfg_fname
 
@@ -572,44 +575,45 @@ def get_train_objects_fname(case=100):
 
 def cat_list(cat_id):
 
-    if cat_id ==99:
-        cat_list_fname ='/dccstor/jsdata1/data/inloc_classes_pre20.txt'
+    if cat_id =='inloc_animals_test': # 214 test Imagenet-LOC categories selected to contain animals and birds.
+        cat_list_fname ='./data/Imagenet_LOC/in_domain_categories.txt' #'/dccstor/jsdata1/dev/Deformable-ConvNets/fewshot_test/fpn_pascal_imagenet_15/in_domain_categories.txt'
 
-    if cat_id ==100: # 214 test Imagenet-LOC categories selected to contain animals and birds. Used in the NIPS paper.
-        cat_list_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fewshot_test/fpn_pascal_imagenet_15/in_domain_categories.txt'
-
-    if cat_id ==200: # 50 out of 214 test Imagenet-LOC categories selected to contain animals and birds. Used in the NIPS paper.
-        cat_list_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fewshot_test/fpn_pascal_imagenet_15/in_domain_categories_50.txt'
-
-
-    if cat_id == 101:  # First 101 Imagenet-LOC categories(used for training)
-        cat_list_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fewshot_test/fpn_pascal_imagenet_15/inloc_first101_categories.txt'
-
-    if cat_id == 102:  # Validation categories 200 man made
-        cat_list_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fewshot_test/fpn_pascal_imagenet_15/inloc_last_200.txt'
-
-    # Imagenet-DET ------------------------------------------------------------------------
-    # Imagenet-DET 100-100 splits of categories:
-    # split 1: training categories picked to contain the COCO categories
-    # split 2: training categories are the first 100 in the natural order of Imagenet DET'
-
-    if cat_id == 'indet_split1_train':  # (110) Imagenet-DET, handpicked - train for cfg_15. Containing COCO classes.
-        cat_list_fname = '/dccstor/jsdata1/data/Imagenet_DET/train_classes.txt'
-    if cat_id == 'indet_split1_test':  # (111) Imagenet-DET, handpicked - test for cfg_15
-        cat_list_fname = '/dccstor/jsdata1/data/Imagenet_DET/test_classes.txt'
-    # if cat_id == 112:  # (112) Imagenet-DET, handpicked - test 14
-    #     cat_list_fname = '/dccstor/jsdata1/data/Imagenet_DET/imagenet_det_second100_classes.txt','/dccstor/jsdata1/data/imagenet_det_last100.txt'
-    if cat_id == 'indet_split2_train':  # (112) Imagenet-DET, first 100 - train 15
-        cat_list_fname = '/dccstor/jsdata1/data/imagenet_det_first100.txt'
-    if cat_id == 'indet_split2_test':
-        cat_list_fname = '/dccstor/jsdata1/data/Imagenet_DET/imagenet_det_second94_classes.txt'
-
-    if cat_id == 'indet_splitLSTD_test':  # 50 out of Imagenet-DET indet_split1_test
-        cat_list_fname = '/dccstor/jsdata1/data/Imagenet_DET/test_classes_50.txt'
-
-    # Pascal VOC
-    if cat_id == 120:
-        cat_list_fname = '/dccstor/jsdata1/dev/data/VOC_data/VOC_class_list.txt'
+    # if cat_id ==99:
+    #     cat_list_fname ='/dccstor/jsdata1/data/inloc_classes_pre20.txt'
+    #
+    #
+    # if cat_id ==200: # 50 out of 214 test Imagenet-LOC categories selected to contain animals and birds. Used in the NIPS paper.
+    #     cat_list_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fewshot_test/fpn_pascal_imagenet_15/in_domain_categories_50.txt'
+    #
+    #
+    # if cat_id == 101:  # First 101 Imagenet-LOC categories(used for training)
+    #     cat_list_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fewshot_test/fpn_pascal_imagenet_15/inloc_first101_categories.txt'
+    #
+    # if cat_id == 102:  # Validation categories 200 man made
+    #     cat_list_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fewshot_test/fpn_pascal_imagenet_15/inloc_last_200.txt'
+    #
+    # # Imagenet-DET ------------------------------------------------------------------------
+    # # Imagenet-DET 100-100 splits of categories:
+    # # split 1: training categories picked to contain the COCO categories
+    # # split 2: training categories are the first 100 in the natural order of Imagenet DET'
+    #
+    # if cat_id == 'indet_split1_train':  # (110) Imagenet-DET, handpicked - train for cfg_15. Containing COCO classes.
+    #     cat_list_fname = '/dccstor/jsdata1/data/Imagenet_DET/train_classes.txt'
+    # if cat_id == 'indet_split1_test':  # (111) Imagenet-DET, handpicked - test for cfg_15
+    #     cat_list_fname = '/dccstor/jsdata1/data/Imagenet_DET/test_classes.txt'
+    # # if cat_id == 112:  # (112) Imagenet-DET, handpicked - test 14
+    # #     cat_list_fname = '/dccstor/jsdata1/data/Imagenet_DET/imagenet_det_second100_classes.txt','/dccstor/jsdata1/data/imagenet_det_last100.txt'
+    # if cat_id == 'indet_split2_train':  # (112) Imagenet-DET, first 100 - train 15
+    #     cat_list_fname = '/dccstor/jsdata1/data/imagenet_det_first100.txt'
+    # if cat_id == 'indet_split2_test':
+    #     cat_list_fname = '/dccstor/jsdata1/data/Imagenet_DET/imagenet_det_second94_classes.txt'
+    #
+    # if cat_id == 'indet_splitLSTD_test':  # 50 out of Imagenet-DET indet_split1_test
+    #     cat_list_fname = '/dccstor/jsdata1/data/Imagenet_DET/test_classes_50.txt'
+    #
+    # # Pascal VOC
+    # if cat_id == 120:
+    #     cat_list_fname = '/dccstor/jsdata1/dev/data/VOC_data/VOC_class_list.txt'
 
     return cat_list_fname
 

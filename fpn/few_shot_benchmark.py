@@ -1,5 +1,9 @@
-# few-shot test with fine-tuning
-# Joseph Shtok, IBM Research AI, Haifa. October 2018
+#------------------------------------------------------------------
+# RepMet few-shot detection engine
+# Copyright (c) IBM Corp. 2018, 2019
+# Licensed under the BSD 3-clause License [see LICENSE for details]
+# Joseph Shtok, josephs@il.ibm.com, Leonid Karlinsky, leonidka@il.ibm.com, IBM Research AI, Haifa, Israel
+#------------------------------------------------------------------
 
 import _init_paths
 import argparse
@@ -33,9 +37,6 @@ os.environ['MXNET_CUDNN_AUTOTUNE_DEFAULT'] = '0'
 os.environ['MXNET_ENABLE_GPU_P2P'] = '0'
 cur_path = os.path.abspath(os.path.dirname(__file__))
 data_names = ['data', 'im_info']
-# ------------------------------------------------------------------------------------------------------
-debug_perf = False
-export_to_FSD = False # export episodes to FSD_bench format
 # ------------------------------------------------------------------------------------------------------
 
 
@@ -161,7 +162,6 @@ def add_reps_to_model(arg_params, tot_embeds, Nreplaced=0, from_start=False):
             Nclasses+=1
     reps = mx.nd.reshape(reps, (config.network.EMBEDDING_DIM * config.network.REPS_PER_CLASS * (Nclasses-1), 1))
     arg_params['fc_representatives_weight'] = reps
-
     return arg_params, new_reps, Nclasses
 
 def random_transform(image, boxes, image_data_generator,  seed=None,cats_img=None):
@@ -222,7 +222,7 @@ def show_boxes_loc(im, img_train_bbs, class_inds, scale = 1.0, save_file_path='t
                               bbox[3] - bbox[1], fill=False,
                               edgecolor=color, linewidth=3.5)
         plt.gca().add_patch(rect)
-
+        # print scores: ------------------------
         # if cls_dets.shape[1] == 5:
         #     score = det[-1]
         #     plt.gca().text(bbox[0], bbox[1],
@@ -313,12 +313,10 @@ def train_net(sym_instance, ctx, roidb, arg_params, aux_params, begin_epoch=0, e
     bbox_metric = metric.RCNNL1LossMetric(config)
     eval_metrics = mx.metric.CompositeEvalMetric()
 
-    # rpn_eval_metric, rpn_cls_metric, rpn_bbox_metric, eval_metric, cls_metric, bbox_metric
     if not config.network.base_net_lock:
         all_child_metrics = [rpn_eval_metric, rpn_cls_metric, rpn_bbox_metric, rpn_fg_metric, eval_fg_metric, eval_metric, cls_metric, bbox_metric]
     else:
         all_child_metrics = [rpn_fg_metric, eval_fg_metric, eval_metric, cls_metric, bbox_metric]
-    # all_child_metrics = [rpn_eval_metric, rpn_bbox_metric, rpn_fg_metric, eval_fg_metric, eval_metric, cls_metric, bbox_metric]
 
     ################################################
     ### added / updated by Leonid to support oneshot
@@ -396,54 +394,47 @@ def gen_predictor(sym, arg_params, aux_params, data):
 def parse_args():
     parser = argparse.ArgumentParser(description='one-shot detection test')
     # general
-    parser.add_argument('--test_name',      default='',     type=str, required=True, help='experiment type')
-    parser.add_argument('--gen_episodes',   default=0,      type=int, required=False, help='experiment type')
-    parser.add_argument('--load_episodes',  default=1,      type=int, required=False, help='experiment type')
-    parser.add_argument('--resume',         default=0,      type=int, required=False, help='load saved stats and continue from last episode');
-    parser.add_argument('--gpu',            default=0,      type=int, required=False, help='gpu number to use')
-    parser.add_argument('--do_finetune',    default=0,      type=int, required=False, help='experiment type')
+    parser.add_argument('--test_name',      default='',     type=str, required=True, help='experiment name. Determines the dataset nad the model')
+    parser.add_argument('--gpu',            default=0,      type=int, required=False, help='gpu number (ordinal) to use')
+    parser.add_argument('--gen_episodes',   default=0,      type=int, required=False, help='set `1` to produce episodes for this task')
+    parser.add_argument('--load_episodes',  default=1,      type=int, required=False, help='set `1` to load episodes from existing files')
+    parser.add_argument('--resume',         default=0,      type=int, required=False, help='set `1` to load saved stats and continue from last episode');
+    parser.add_argument('--do_finetune',    default=0,      type=int, required=False, help='set `1` to perform fine-tuning')
     parser.add_argument('--num_finetune_epochs',   default=10, type=int,    help='how many finetune epochs to run', required=False)
-    parser.add_argument('--use_aug_reps',   default=0,      type=int,     help='whether to use augmentation for generating representatives', required=False)
-    parser.add_argument('--use_aug',        default=0,      type=int,   help='whether to use augmentation for training', required=False)
-    parser.add_argument('--validate',       default=1,      type=int, help='whether to filter the input images', required=False)
-    parser.add_argument('--exactNshot',     default=1,      type=int, help='ensure the number of training objects exactly', required=False)
-    parser.add_argument('--num_aug_rounds',        default=10, type=int,   help='how many augmentations to do', required=False)
+    parser.add_argument('--use_aug_reps',   default=0,      type=int, help='set `1` to use augmentation when generating representatives', required=False)
+    parser.add_argument('--use_aug',        default=0,      type=int, help='set `1` to use augmentation for training', required=False)
+    parser.add_argument('--num_aug_rounds', default=10,     type=int, help='how many augmentations to do', required=False)
+    parser.add_argument('--exactNshot',     default=1,      type=int, help='ensure the number of training objects does not exceed Nshot', required=False)
+    parser.add_argument('--ensure_quota',   default=0,        type=int, required=False, help='ensure the Nshot number of training objects, complementing from the pool if initial examples cannot be used')
     parser.add_argument('--Nshot',          default=1,      type=int, required=False, help='Number of samples per category')
-    parser.add_argument('--Nway',           default=5,      type=int, required=False, help='Number of categories')
-    parser.add_argument('--Nreps_shot',     default=2,      type=int, required=False, help='Number of query images per category in episode')
-    parser.add_argument('--Nquery_cat',     default=10,      type=int, required=False, help='query images per category')
-    parser.add_argument('--score_thresh',   default=0,      type=float, required=False, help='threshold for scores')
-    parser.add_argument('--iou_thresh',     default=0.7,    type=float, required=False, help='gpu number to use')
+    parser.add_argument('--Nway',           default=5,      type=int, required=False, help='Number of few-shot categories')
+    parser.add_argument('--Nreps_shot',     default=2,      type=int, required=False, help='Number of representatives per category in episode')
+    parser.add_argument('--Nquery_cat',     default=10,     type=int, required=False, help='Number of query images per category')
+    parser.add_argument('--Nepisodes',      default=500,    type=int, required=False, help='Number of episodes in benchmark')
+    parser.add_argument('--score_thresh',   default=0,      type=float, required=False, help='Score threshold for computing the perf. statistics and for display')
+    parser.add_argument('--iou_thresh',     default=0.7,    type=float, required=False, help='IoU threshold for detecting training examples for representatives')
     parser.add_argument('--lr',             default=1e-4,   type=float, required=False, help='learning rate to use')
-    parser.add_argument('--custom_exp',     default='',     type=str, required=False, help='filename suffix')
-    parser.add_argument('--ovthresh',       default=0.5,    type=float, required=False, help='consider GT bbox identified with detection bbox if the IoU is above this threshold')
-    parser.add_argument('--Nepisodes',      default=500,    type=int, required=False, help='gpu number to use')
-    parser.add_argument('--scores_field',   default='cls_prob_reshape', type=str,help='other option: cls_score')
-    parser.add_argument('--topK',           default=0,      type=int, required=False, help='gpu number to use')
-    parser.add_argument('--no_lin_loss',    default=1,      type=int, required=False, help='gpu number to use')
-    parser.add_argument('--freeze',         default=0,      type=int, required=False, help='freeze base layers')
-    parser.add_argument('--start_episode',  default=0,      type=int, required=False, help='episode to begin from')
-    parser.add_argument('--isolated',       default=0,      type=int, required=False, help='measure isolated episode statistics')
-    parser.add_argument('--online_validation', default=0,   type=int, required=False, help='measure isolated episode statistics')
-    parser.add_argument('--val_sc_thresh',  default=0.03,    type=float, required=False, help='threshold for internal validation')
-    parser.add_argument('--n_rpn_props',    default=0,      type=int, required=False)
-    parser.add_argument('--display',        default=0,      type=int, required=False)
-    parser.add_argument('--nms_train',      default=0.3,      type=float, required=False)
-    parser.add_argument('--train_clustering', default=1, type=int, required=False)
-    parser.add_argument('--epi_filter',     default=0, type=int, required=False)
-    parser.add_argument('--filter_classes_fname', default='', type=str, required=False)
-    parser.add_argument('--size_filter',    default=0, type=int, required=False)
-    parser.add_argument('--nqc',            default=0, type=int, required=False)
-    parser.add_argument('--display_nImgs',  default=0, type=int, required=False)
-    parser.add_argument('--ensure_quota',   default=0, type=int, required=False)
-    parser.add_argument('--class_nms',      default=0, type=int, required=False)
-
-
-
+    parser.add_argument('--custom_exp',     default='',     type=str, required=False, help='additinal log filename suffix')
+    parser.add_argument('--ovthresh',       default=0.5,    type=float, required=False, help='in perf. evaluation: consider GT bbox identified with detection bbox if the IoU is above this threshold')
+    parser.add_argument('--scores_field',   default='cls_prob_reshape', type=str,help='Type of scores produced by the model. other option: cls_score')
+    parser.add_argument('--topK',           default=0,      type=int, required=False, help='Produce only this number of (top-scored) detections from the image')
+    parser.add_argument('--freeze',         default=0,      type=int, required=False, help='freeze base layers in fine-tuning. Use values 1, 2 (see according lists of layers in the code)')
+    parser.add_argument('--start_episode',  default=0,      type=int, required=False, help='Episode number to start from (relevent when using a loaded set of episodes)')
+    parser.add_argument('--isolated',       default=0,      type=int, required=False, help='performance evaluation for each episode in separate (not cumulative)')
+    parser.add_argument('--n_rpn_props',    default=0,      type=int, required=False, help='Number of RPN region proposals per image (default=2000)')
+    parser.add_argument('--display',        default=0,      type=int, required=False, help='Print out the detections')
+    parser.add_argument('--nms_train',      default=0.3,      type=float, required=False, help='nms applied to relevant training image regions')
+    parser.add_argument('--train_clustering', default=1, type=int, required=False,help='set `1` to produce the representatives via clustering of relevant training rois')
+    parser.add_argument('--size_filter',    default=0, type=int, required=False, help='remove rois with less than size_filter portion of the image')
+    parser.add_argument('--nqc',            default=0, type=int, required=False, help='test on just the firts nqc query images (relevant when working on loadd episodes)')
+    parser.add_argument('--display_nImgs',  default=0, type=int, required=False, help='print the image indices for classes used in the benchmark')
+    parser.add_argument('--class_nms',      default=0, type=int, required=False, help='Perform nms between detections of different classes')
+    parser.add_argument('--validate',       default=0, type=int, required=False, help='set `1` to filter the input images according to validation lists')
     args = parser.parse_args()
     return args
+
 args = parse_args()
-overlap_thresh = np.array(args.iou_thresh)
+#overlap_thresh = np.array(args.iou_thresh)
 nms_ovp_rois = gpu_nms_wrapper(args.nms_train, args.gpu)
 nms_dets = gpu_nms_wrapper(config.TEST.NMS, args.gpu)
 
@@ -481,10 +472,9 @@ def run_detection_new(sym, arg_params, aux_params, img_fname, img_cat, cat_indic
         scores_sorted = np.sort(-scores_seq)
         thresh = -scores_sorted[args.topK - 1]
         scores = (scores >= thresh) * scores
-    Nb=2000
+    Nb= config.TEST.RPN_POST_NMS_TOP_N # = 2000
     dets_nms = []
     if args.class_nms==1:
-
         for ic, c in enumerate(cat_indices):
             cls_scores = scores[:, c, np.newaxis]
             cls_boxes = boxes[:, 4:8] if config.CLASS_AGNOSTIC else boxes[:, c * 4:(c + 1) * 4]
@@ -497,19 +487,7 @@ def run_detection_new(sym, arg_params, aux_params, img_fname, img_cat, cat_indic
             cls_dets = cls_dets[cls_dets[:, -1] > score_thresh, :]
             dets_nms.append(all_dets[keep_cls])
 
-        # scores_mc = np.max(scores, axis=1)
-        # scores_mc_sorted = np.sort(-scores_mc)
-        # cls_boxes = boxes[:, 4:8] if config.CLASS_AGNOSTIC else boxes[:, min(cat_indices) * 4:(max(cat_indices) + 1) * 4]
-        # cls_dets = np.hstack((cls_boxes, scores_mc))
-        # keep = nms_dets(cls_dets)
-        # for j in range(scores.shape[1]): # loop over classes
-        #     inds = np.where(scores_mc[keep]==scores[keep, j])
-        #     cls_boxes = boxes[keep[inds], 4:8] if config.CLASS_AGNOSTIC else boxes[:, j * 4:(j + 1) * 4]
-        #     cls_scores = scores[keep[inds], j, np.newaxis]
-        #     cls_dets = np.hstack((cls_boxes, cls_scores))
-        #     dets_nms.append(cls_dets)
     else:
-        #for j in range(scores.shape[1]): # loop over classes
         for c in cat_indices:
             cls_scores = scores[:, c, np.newaxis]
             cls_boxes = boxes[:, 4:8] if config.CLASS_AGNOSTIC else boxes[:, c * 4:(c + 1) * 4]
@@ -518,9 +496,6 @@ def run_detection_new(sym, arg_params, aux_params, img_fname, img_cat, cat_indic
             cls_dets = cls_dets[keep, :]
             cls_dets = cls_dets[cls_dets[:, -1] > score_thresh, :]
             dets_nms.append(cls_dets) # detections per class
-
-    # for det in dets_nms:
-    #     print(det.shape)
 
     if args.display==1:
         #save_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/data/test_img.png'
@@ -576,16 +551,17 @@ def run_detection(sym, arg_params, aux_params, img_fname, img_cat, cat_indices,e
 
 
 def get_workpoint():
-    prep_reps_for_model = True
-    new_cats_to_beginning = False
+    prep_reps_for_model = True # Computer representatives for the model, unless specified otherwise
+    new_cats_to_beginning = False # replace the old classes, rather than ignoring them
     train_objects_fname = ''
     scores_fname = ''
+
     # Imagenet-LOC ------------------------------------------------------
-    if args.test_name == 'RepMet_inloc':  # 'eer_214_train_hist': # RepMet on IN-loc
-        cfg_fname = config_list(config_id=208)
-        model_case = 200
-        test_classes_fname = cat_list(100)  # 214 cats
-        test_model_name = 'd_RepMet' #'b_RepMet'  # ''fpn_pascal_imagenet_15'
+    if args.test_name == 'RepMet_inloc':  # RepMet detector
+        cfg_fname = config_list(config_id='RepMet_inloc')
+        model_case = args.test_name
+        test_classes_fname = cat_list('inloc_animals_test')  # 214 cats
+        test_model_name = args.test_name #'b_RepMet'  # ''fpn_pascal_imagenet_15'
         roidb_fname = '/dccstor/jsdata1/data/voc_inloc/voc_inloc_roidb.pkl'
         train_objects_fname, scores_fname = get_train_objects_fname('repmet_inloc')
 
@@ -743,10 +719,6 @@ def get_workpoint():
     #
 
 
-
-
-
-
     if args.test_name == 'Vanilla14_indet':
         cfg_fname = config_list(8)  # Vanilla fpn-dcn
         test_model_name = 'b_Vanilla'
@@ -861,7 +833,7 @@ def get_datagen():
 
 def get_names(test_model_name):
     exp_name = args.test_name+'_{0}shot_{1}way_{2}qpc_{3}val'
-    gen_root = '/dccstor/jsdata1/dev/Deformable-ConvNets/fs_tests_exact'
+    gen_root = './output/benchmarks'
     exp_name_str = exp_name.format(args.Nshot, args.Nway, args.Nquery_cat,args.validate)
     episodes_fname = os.path.join(gen_root, exp_name_str + '_episodes.npz')
 
@@ -915,7 +887,7 @@ def gen_reps(roidb,N_inst,epi_cats,train_nImg,model_case,sym,epi_root,epi_num,ep
                     cur_img = cur_img_
                     cur_bbs = cur_bbs_
                     cats_img = cats_img_
-                    if False:
+                    if False: # save the image for debug purposes
                         save_fname = os.path.join(base_path, 'img_aug_' + str(iImg) + ',' + str(aug_round) + '.png')
                         tmp = show_boxes(cur_img, [cur_bbs], ['tmp'], save_file_path=save_fname)
 
@@ -927,8 +899,8 @@ def gen_reps(roidb,N_inst,epi_cats,train_nImg,model_case,sym,epi_root,epi_num,ep
 
                 train_bbs = np.float32(cur_bbs) * scale_factor
                 train_bbs = np.concatenate((train_bbs, cats_img), axis=1)
-                bb_indices, bb_cats = get_ovp_rois(train_bbs, rois_embed, overlap_thresh, args.nms_train > 0)
-                if len(bb_indices)==0:
+                bb_indices, bb_cats = get_ovp_rois(train_bbs, rois_embed, np.array(args.iou_thresh), args.nms_train > 0)
+                if len(bb_indices)==0: # no ROIs were found
                     if args.ensure_quota==1:
                         train_objects = {}
                         for e_cat in epi_cats:
@@ -1109,11 +1081,6 @@ def main(): # test_config
 
 
 # main loop==================================================================================================================
-    if export_to_FSD:
-        FSD_episodes_fname = episodes_fname[:-4]+'_FSD.pkl'
-        FSD_episodes = [{} for _ in range(args.Nepisodes)]
-        from FSD_common_lib import get_ords_names
-        cat_ords, ord2name = get_ords_names(test_classes_fname[:-4]+'_ord.txt')
 
     for epi_num in range(start_episode,end_episode):
         if args.isolated==1:
@@ -1227,17 +1194,6 @@ def main(): # test_config
                 episodes[epi_num]['query_images'] = query_images
                 episodes[epi_num]['epi_cats_names'] = epi_cats_names
 
-        # -- temporary - filtering of episodes by a sifferent list of classes ------------------------------
-        # valid_episode = True
-        # if args.epi_filter==1:
-        #     filter_cats, test_cats_names = names_list_to_indices(args.filter_classes_fname, roidb_classes)
-        #     epi_filter_cats = [cat for cat in epi_cats if cat in filter_cats]
-        #     if len(epi_filter_cats)<len(epi_cats):
-        #         valid_episode = False
-        # if not valid_episode:
-        #     logger.info('Episode {0} invalidated'.format(epi_num))
-        #     continue
-
 
         if args.display==1:
             epi_root = assert_folder(os.path.join(exp_root, 'epi_' + str(epi_num)))
@@ -1254,56 +1210,9 @@ def main(): # test_config
         arg_params, aux_params = load_a_model(config, model_case)
 
 # =============================================================================================================
-        if export_to_FSD: # export episode data
-
-            # gen_reps(roidb, N_inst, epi_cats, train_nImg, model_case, sym, epi_root, epi_num, epi_cats_names, new_cats_to_beginning):
-            # produce training features and add to model -------------------------------------------------------------------------------------------------------
-            FSD_episodes[epi_num]['epi_cats'] = epi_cats
-            FSD_episodes[epi_num]['epi_cats_names'] = [ord2name[cat] for cat in epi_cats]
-            train_boxes = []
-            train_nImgs = []
-            for i_cat, cat in enumerate(epi_cats):
-                for nImg in train_nImg[cat]:
-                    train_nImgs += [nImg]
-                    entry = roidb[nImg]
-                    cat_inds = np.where(entry['gt_classes'] == cat)[0].tolist()
-                    for idx in cat_inds:
-                        train_entry = [cat, ord2name[cat], entry['image'], entry['boxes'][idx]]
-                        train_boxes.append(train_entry)
-            FSD_episodes[epi_num]['train_boxes'] = train_boxes
-            q_images = []
-            query_gt =[]
-            for cat in epi_cats:
-                q_images.extend([roidb[nImg]['image'] for nImg in query_images[cat]])
-                query_gt.extend([roidb[nImg] for nImg in query_images[cat]])
-            FSD_episodes[epi_num]['query_images'] = q_images
-            FSD_episodes[epi_num]['query_gt'] = query_gt
-            continue
-
-                #=============================================================================================================
         if prep_reps_for_model:
             arg_params, n_ext_classes = gen_reps(roidb,N_inst,epi_cats,train_nImg,model_case,\
                                                  sym,epi_root,epi_num,epi_cats_names,new_cats_to_beginning)
-
-        if debug_perf:
-            from utils.save_model import save_checkpoint
-            model_prefix = '/dccstor/jsdata1/dev/RepMet/data/JES_pilot/tfs5_models/e_1s_epi1'
-            epochs = 0
-            save_checkpoint(model_prefix, epochs, arg_params, aux_params)
-            arg_params_0 = copy.deepcopy(arg_params)
-
-            model_prefix = '/dccstor/jsdata1/dev/RepMet/output/FSD_tests/Inloc_RepMet_1_5_10_1000/epi_0/bad/model'
-            epoch = 0
-            arg_params, aux_params = load_param(model_prefix, epoch, process=True)
-            fcr_new = arg_params['fc_representatives_weight']
-            fcr_new = mx.nd.reshape(fcr_new, shape=(config.network.EMBEDDING_DIM, config.network.REPS_PER_CLASS, 5))
-            fcr_old = arg_params_0['fc_representatives_weight']
-            fcr_old = mx.nd.reshape(fcr_old, shape=(config.network.EMBEDDING_DIM, config.network.REPS_PER_CLASS, 126))
-
-            fcr = mx.nd.concat(fcr_old[:,:,:121], fcr_new, dim=2)
-            fcr = mx.nd.reshape(fcr,shape=(config.network.EMBEDDING_DIM*config.network.REPS_PER_CLASS*126,1))
-
-            arg_params['fc_representatives_weight'] = fcr
 
         sym_ext = sym_instance.get_symbol(config, is_train=False)
         if new_cats_to_beginning:#rgs.test_name=='base_inloc':
@@ -1396,16 +1305,6 @@ def main(): # test_config
 
             sym_ext = sym_instance.get_symbol(config, is_train=False)
 
-
-
-
-
-            # #config.network.base_net_lock = True
-            # arg_params_ext, aux_params = train_net(sym_instance, ctx=[mx.gpu(args.gpu)], roidb=n_roidb, arg_params=arg_params_ext, \
-            #                                        begin_epoch=0, end_epoch=args.num_finetune_epochs,\
-            #                                        aux_params=aux_params, lr=args.lr, lr_step='20,30,50')
-            #
-
         # detection ---------------------------------------------------------------------------------------------------------
         if new_cats_to_beginning:
             cat_indices = range(1, args.Nway + 1)
@@ -1419,10 +1318,6 @@ def main(): # test_config
             ap_after = ap
             logger.info('AP change due to finetuning: {0:.3f}-->{1:.3f}'.format(ap_before,ap_after))
 
-    if export_to_FSD:
-        with open(FSD_episodes_fname, 'wb') as fid:
-            cPickle.dump(FSD_episodes, fid, protocol=cPickle.HIGHEST_PROTOCOL)
-        return
     stats = perf_stats.get_stats()  # [ [self.sc, self.tp, self.fp, self.fpw, self.fpb], self.nGT, self.d,self.img_recAtK]
     np.savez(exp_data_fname, stats=stats)
 
@@ -1432,116 +1327,3 @@ def main(): # test_config
 
 if __name__ == '__main__':
     main()
-
-
-
-    # def get_ovp_rois(roi_targ, rois_embed, overlap_thresh):
-    #     bb_indices = []
-    #     cat_ids = []
-    #     for GT_idx, gtbb in enumerate(roi_targ):
-    #         overlaps = bb_overlap(rois_embed[:,1:],gtbb[0:-1])
-    #         inst_indices = np.where(overlaps>=overlap_thresh)[0]
-    #         if len(inst_indices)==0:
-    #             print('Box #{0} - no overlapping detection boxes found'.format(GT_idx))
-    #         else:
-    #             inst_indices = inst_indices.tolist()
-    #             #print('Box #{0} - max. overplap:{1:.4f}'.format(GT_idx,np.max(overlaps[inst_indices])))
-    #             bb_indices.extend(inst_indices)
-    #             cat_ids.extend([gtbb[-1]]*len(inst_indices))
-    #
-    #     return bb_indices, cat_ids
-
-
-    # Nclasses = config.dataset.NUM_CLASSES
-    # config.dataset.NUM_CLASSES = Nclasses
-    # blacklist = []
-    # if args.online_validation==1:
-    # # ---------------------------------------------------------------------------------------------------------
-    # # produce training features and add to model
-    #     N_replaced = 0
-    #     sc_thresh = 0
-    #     N_val_imgs = 20
-    #     for i_cat, cat in enumerate(epi_cats):
-    #         for nImg in train_nImg[cat]:
-    #             cur_img = roidb[nImg]['image']
-    #             cur_bbs = roidb[nImg]['boxes']
-    #             cats_img = np.expand_dims(roidb[nImg]['gt_classes'], axis=1)
-    #             data, data_batch, scale_factor, im = prep_data_single(cur_img)
-    #             config.dataset.NUM_CLASSES = Nclasses
-    #             arg_params, aux_params = load_a_model(config, model_case)
-    #             predictor = gen_predictor(sym, arg_params, aux_params, data)
-    #             out_data = predictor.predict(data_batch)
-    #             rois_embed = out_data[0]['rois_output']  # rois_boxes. shape: [#rois, 5]
-    #             psp_embed = out_data[0]['psp_final_embed_output']  # rois_feats. [#rois, #dims]
-    #             train_bbs = np.float32(cur_bbs) * scale_factor
-    #             train_bbs = np.concatenate((train_bbs, cats_img), axis=1)
-    #             bb_indices, cats_img = get_ovp_rois(train_bbs, rois_embed, overlap_thresh)
-    #             # select those training objects that are within episode categories ---------------------------------
-    #             bb_indices_epi, cat_ids_img, img_inst_idx = [[] for _ in range(3)]
-    #             for bb_idx, cat_img, train_bb in zip(bb_indices, cats_img, train_bbs):
-    #                 if cat_img in epi_cats:
-    #                     cat_idx = np.where(epi_cats == cat_img)[0][0]
-    #                     if args.exactNshot == 1 and shot_cntr[cat_idx] >= args.Nshot:
-    #                         continue
-    #                     bb_indices_epi += [bb_idx]  # bounding box index
-    #                     cat_ids_img += [int(cat_idx)]  # index of the episode category for this bounding box
-    #             embeds_img = extract_embeds(psp_embed, bb_indices_epi)
-    #             img_embeds = compute_tot_embeds(np.array(cat_ids_img), args.Nway, embeds_img)
-    #             #reps = arg_params['fc_representatives_weight']  # shape=(cfg.network.EMBEDDING_DIM*cfg.network.REPS_PER_CLASS*(num_classes-1))
-    #             #Nclasses_curr = reps.shape[0] / (config.network.EMBEDDING_DIM * config.network.REPS_PER_CLASS) + 1
-    #             #N_replaced = Nclasses_curr - Nclasses
-    #             arg_params, new_reps = add_reps_to_model(arg_params, img_embeds)
-    #
-    #             config.dataset.NUM_CLASSES = Nclasses + args.Nway
-    #             n_ext_classes = config.dataset.NUM_CLASSES - 1
-    #             sym_ext = sym_instance.get_symbol(config, is_train=False)
-    #             cat_indices = range(n_base_classes + 1, n_ext_classes + 1)
-    #             d_val=0
-    #             nd_val = np.int(args.Nway * MaxBboxesPerImage * nms_factor)
-    #             perf_stats_val = PerfStats(difficult=False, Nslots=nd_val)
-    #             other_imgs = [qImg for i_cat, cat in enumerate(epi_cats) for qImg in train_nImg[cat] if qImg!=nImg]
-    #             vet_imgs = random.sample(other_imgs,min(len(other_imgs),N_val_imgs))
-    #             # for i_cat, cat in enumerate(epi_cats):
-    #             #     for qImg in train_nImg[cat]:
-    #             #         if nImg==qImg:
-    #             #             continue
-    #             for qImg in vet_imgs:
-    #                 gt_boxes = np.copy(roidb[qImg]['boxes'])
-    #                 gt_classes = roidb[qImg]['gt_classes']  # legacy from Pascal dataset
-    #                 img_fname = roidb[qImg]['image']
-    #                 q_dets = run_detection(sym_ext, arg_params, aux_params, img_fname, cat_indices,epi_cats_names,exp_root, nImg,epi_num)
-    #                 d_val = perf_stats_val.comp_epi_stats_m(d_val, q_dets, gt_boxes, gt_classes, epi_cats, args.ovthresh)
-    #             fp = perf_stats_val.get_FP()
-    #             scores = perf_stats_val.get_score()
-    #             in_scores = [scores[idx] for idx in range(len(fp)) if fp[idx]==1 and scores[idx]>sc_thresh]
-    #             in_scores.sort(reverse=True) # high to low
-    #             BG_score = np.mean(in_scores[0:30]) if len(in_scores)>=30 else np.mean(sorted_scores)
-    #             #tot_tp, tot_fp, tot_fp_wrong, tot_fp_bkgnd, recall, ap = perf_stats_val.compute_stats(0)
-    #
-    #             if BG_score> args.val_sc_thresh:
-    #                 blacklist+=[nImg]
-    #                 print('nImg {0}: BG score = {1:.3f}'.format(nImg, BG_score))
-    #
-    #
-    #             if nImg in blacklist:
-    #                continue
-
-
-    # def add_reps_to_model(arg_params, tot_embeds, Nreplaced=0, from_start=0):
-    #     # tot_embeds[i] is a cat_embeds for a category i. cat_embeds = [embed_dim, #REPS_PER_CAT]
-    #     new_reps = []
-    #     for cat_embeds in tot_embeds:
-    #         new_reps = cat_embeds
-    #         new_reps = np.expand_dims(new_reps, axis=2)
-    #
-    #         reps = arg_params['fc_representatives_weight'] # shape=(cfg.network.EMBEDDING_DIM*cfg.network.REPS_PER_CLASS*(num_classes-1))
-    #         Nclasses = reps.shape[0] / (config.network.EMBEDDING_DIM * config.network.REPS_PER_CLASS) + 1
-    #         # print('num classes = '+str(Nclasses))
-    #         reps = mx.nd.reshape(reps, shape=(config.network.EMBEDDING_DIM, config.network.REPS_PER_CLASS, Nclasses-1))
-    #         if Nreplaced>0:
-    #             reps = reps[:,:,:-Nreplaced]
-    #         reps = mx.nd.concat(reps, mx.nd.array(new_reps), dim=2)
-    #         reps = mx.nd.reshape(reps, (config.network.EMBEDDING_DIM * config.network.REPS_PER_CLASS * Nclasses, 1))
-    #         arg_params['fc_representatives_weight'] = reps
-    #
-    #     return arg_params, new_reps
