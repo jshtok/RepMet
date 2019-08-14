@@ -434,7 +434,6 @@ def parse_args():
     return args
 
 args = parse_args()
-#overlap_thresh = np.array(args.iou_thresh)
 nms_ovp_rois = gpu_nms_wrapper(args.nms_train, args.gpu)
 nms_dets = gpu_nms_wrapper(config.TEST.NMS, args.gpu)
 
@@ -549,7 +548,6 @@ def run_detection(sym, arg_params, aux_params, img_fname, img_cat, cat_indices,e
 
     return dets_nms
 
-
 def get_workpoint():
     prep_reps_for_model = True # Computer representatives for the model, unless specified otherwise
     new_cats_to_beginning = False # replace the old classes, rather than ignoring them
@@ -558,20 +556,23 @@ def get_workpoint():
 
     # Imagenet-LOC ------------------------------------------------------
     if args.test_name == 'RepMet_inloc':  # RepMet detector
-        cfg_fname = config_list(config_id='RepMet_inloc')
+        cfg_fname = './experiments/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8.yaml'
+        test_classes_fname ='./data/Imagenet_LOC/in_domain_categories.txt'  # 214 categories
+        roidb_fname = './data/Imagenet_LOC/voc_inloc_roidb.pkl'
         model_case = args.test_name
-        test_classes_fname = cat_list('inloc_animals_test')  # 214 cats
-        test_model_name = args.test_name #'b_RepMet'  # ''fpn_pascal_imagenet_15'
-        roidb_fname = '/dccstor/jsdata1/data/voc_inloc/voc_inloc_roidb.pkl'
-        train_objects_fname, scores_fname = get_train_objects_fname('repmet_inloc')
+        test_model_name = args.test_name
+        # train_objects_fname, scores_fname = get_train_objects_fname('repmet_inloc')
 
+    if args.test_name == 'Vanilla_inloc':
+        cfg_fname = '/dccstor/jsdata1/dev/RepMet_project/RepMet_CVPR19/experiments/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_noemb.yaml'
+    # -----------------------------------------------------
     if args.test_name == 'Vanilla_inloc':  # 'nb19_214_train_hist_11':
-        cfg_fname = config_list('19_noemb')  # 103 # Vanilla fpn-dcn trained on Pascal + IN-LOC
-        model_case = '19' # 303
-        test_classes_fname = cat_list(100)  # 214 cats
-        test_model_name = 'b_Vanilla'  # ''fpn_pascal_imagenet_15'
+        cfg_fname = './experiments/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_noemb.yaml'
+        test_classes_fname = './data/Imagenet_LOC/in_domain_categories.txt'  # 214 categories
+        model_case = args.test_name
+        test_model_name = args.test_name
         roidb_fname = '/dccstor/jsdata1/data/voc_inloc/voc_inloc_roidb.pkl'
-        train_objects_fname, scores_fname = get_train_objects_fname('vanilla_inloc')
+        #train_objects_fname, scores_fname = get_train_objects_fname('vanilla_inloc')
 
 
     if args.test_name == 'base_inloc':
@@ -859,7 +860,6 @@ def is_large_roi(img_h, img_w, bbox, min_portion):
     width = bbox[2] - bbox[0]
     return 100 * max(height / roidb[nImg]['height'], width / roidb[nImg]['width']) < args.size_filter
 
-
 def gen_reps(roidb,N_inst,epi_cats,train_nImg,model_case,sym,epi_root,epi_num,epi_cats_names,new_cats_to_beginning):
     # produce training features and add to model -------------------------------------------------------------------------------------------------------
     all_custom_embed = np.zeros((config.network.EMBEDDING_DIM, 0))
@@ -870,7 +870,6 @@ def gen_reps(roidb,N_inst,epi_cats,train_nImg,model_case,sym,epi_root,epi_num,ep
         shot_cntr = np.zeros(args.Nway)
         for i_cat, cat in enumerate(epi_cats):
             for nImg in train_nImg[cat]:
-                #print('Processing image {0}'.format(nImg))
                 cur_img = roidb[nImg]['image']
                 cur_bbs = roidb[nImg]['boxes']
                 cats_img = np.expand_dims(roidb[nImg]['gt_classes'], axis=1)
@@ -933,8 +932,8 @@ def gen_reps(roidb,N_inst,epi_cats,train_nImg,model_case,sym,epi_root,epi_num,ep
                 all_cat_ids_heap += cat_ids_epi
                 if len(bb_indices_epi) == 0:
                     continue
-                # print all bboxes in img
 
+                # print all bboxes in img ----------
                 if args.display==1:
                     save_fname = os.path.join(epi_root, 'epi_{0}_trn_img:{1}_cat:{2}.png'.format(epi_num, nImg, epi_cats_names[cat_ids_epi[-1]]))
                     # im, dets_nms = get_disp_data(img_fname, scores, boxes, nms, thresh)
@@ -942,7 +941,7 @@ def gen_reps(roidb,N_inst,epi_cats,train_nImg,model_case,sym,epi_root,epi_num,ep
                     im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
                     show_boxes_loc(im, rois_embed[np.asarray(bb_indices_epi), 1:], cat_ids_epi, scale=1 / scale_factor, save_file_path=save_fname)
 
-            # print('got {0} embeds, {1} objects '.format(all_custom_embed.shape[1],len(all_cat_ids_heap)))
+            # print('got {0} embeddings, {1} objects '.format(all_custom_embed.shape[1],len(all_cat_ids_heap)))
     cat_ids_all = np.array(all_cat_ids_heap)
     tot_embeds = compute_tot_embeds(cat_ids_all, args.Nway, all_custom_embed, use_kmeans=args.train_clustering == 1)
     arg_params, new_reps, num_classes = add_reps_to_model(arg_params, tot_embeds,from_start=new_cats_to_beginning)
