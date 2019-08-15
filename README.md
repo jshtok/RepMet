@@ -63,23 +63,25 @@ where the new path is your Imagenet-LOC dataset location.
 As a first step, you may run the short toy benchmark for 1-shot, 3-way detection:
 from the main folder of the repository, `/RepMet`, execute 
 
-`--test_name=RepMet_inloc --Nshot=1 --Nway=3 --Nquery_cat=2 --Nepisodes=2 --display=1`
+`python fpn/few_shot_benchmark.py --test_name=RepMet_inloc --Nshot=2 --Nway=3 --Nquery_cat=2 --Nepisodes=2 --display=1`
 
 To reconstruct the 1-shot, 5-way experiment with the RepMet detector (no fine-tuning) from the CVPR paper, run
 
-`python fpn/few_shot_benchmark.py --test_name=RepMet_inloc --gpu=0`
+`python fpn/few_shot_benchmark.py --test_name=RepMet_inloc  --Nshot=1 --Nway=5 --Nquery_cat=10 --Nepisodes=500`
 
 Run the same setup with model fine-tuning on each episode: 
 
-`--test_name=RepMet_inloc --do_finetune=1 --num_finetune_epochs=5 --lr=5e-4`
+`python fpn/few_shot_benchmark.py --test_name=RepMet_inloc  --Nshot=1 --Nway=5 --Nquery_cat=10 --Nepisodes=500 --do_finetune=1 --num_finetune_epochs=5 --lr=5e-4`
 
 The `few_shot_benchmark.py` is the main script executing all operations. Main argument, determining the detector and dataset to use,
  is the `--test_name`. In the example above, `--test_name=RepMet_inloc` evokes the RepMet detector, with the Imagenet-LOC dataset.
- Using `--test_name=Vanilla_inloc` will call the baseline detector (see the paper for details).
- 
+ Using `--test_name=Vanilla_inloc` will call the baseline detector (see the paper for details):  
+`python fpn/few_shot_benchmark.py --test_name=Vanilla_inloc  --Nshot=1 --Nway=5 --Nquery_cat=10 --Nepisodes=500`
+
 The output is produced in `RepMet/output/benchmarks/<test_name>`. In this location, a folder, corresponding to specific 
 test arguments is created (e.g., `RepMet_inloc_1shot_5way_10qpc_ft:5` is a folder for 1-shot, 5-way, 10 query examples per-class, with 5 epochs of fine-tuning).
-In this test folder, a log file is produced for each code execution (time stamped).
+In this test folder, a log file is produced for each code execution (time stamped). There is a subfolder for each episode, where the graphical visualizations 
+of the trainng images and detections in test images will be produced if the --display=1 is set. 
 
 
 
@@ -92,10 +94,10 @@ Here Nshot is number of samples per category, Nway is the number of few-shot cat
 By default, the algorithm loads an existing file with episodic test data (if available). If the set of episodes for the specified configuration, was not previously created, or if the argument --gen_episodes=1 is provided, the episodes file will be created (but no tests will run at this time).
 
 For example, to create a new benchmark with 3-shot, 4-way, 2 test samples per class, 2 episodes, run    
-`--test_name=RepMet_inloc --gen_episodes=1, --load_episodes=0, --Nshot=3 --Nway=4 --Nquery_cat=2 --Nepisodes=2`
+`python fpn/few_shot_benchmark.py --test_name=RepMet_inloc --gen_episodes=1, --load_episodes=0, --Nshot=3 --Nway=4 --Nquery_cat=2 --Nepisodes=2`
 
 to create the benchmark and then run    
-`--test_name=RepMet_inloc --Nshot=3 --Nway=4 --Nquery_cat=2 --Nepisodes=2`
+`python fpn/few_shot_benchmark.py --test_name=RepMet_inloc --Nshot=3 --Nway=4 --Nquery_cat=2 --Nepisodes=2`
 
 to test it. Note that a separate benchmark file is produced for each test_case.
 

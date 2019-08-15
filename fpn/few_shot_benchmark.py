@@ -533,9 +533,9 @@ def get_datagen():
     return aug_data_generator
 
 def get_names(test_model_name):
-    exp_name = args.test_name+'_{0}shot_{1}way_{2}qpc'
+    exp_name = args.test_name+'_{0}shot_{1}way_{2}qpc_{3}epi'
     gen_root = root+'/output/benchmarks'
-    exp_name_str = exp_name.format(args.Nshot, args.Nway, args.Nquery_cat)
+    exp_name_str = exp_name.format(args.Nshot, args.Nway, args.Nquery_cat, args.Nepisodes)
     episodes_fname = os.path.join(gen_root, exp_name_str + '_episodes.npz')
 
     run_name = exp_name_str
