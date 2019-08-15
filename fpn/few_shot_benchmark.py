@@ -1,7 +1,7 @@
 #------------------------------------------------------------------
 # RepMet few-shot detection engine
-# Copyright (c) IBM Corp. 2018, 2019
-# Licensed under the BSD 3-clause License [see LICENSE for details]
+# Copyright (c) 2019 IBM Corp.
+# Licensed under The Apache-2.0 License [see LICENSE for details]
 # Joseph Shtok, josephs@il.ibm.com, Leonid Karlinsky, leonidka@il.ibm.com, IBM Research AI, Haifa, Israel
 #------------------------------------------------------------------
 
@@ -21,7 +21,7 @@ from config.config import config, update_config
 from core.tester import im_detect,im_detect_feats, im_detect_feats_stats, Predictor
 from nms.nms import gpu_nms_wrapper
 from symbols import *
-from data_hub import load_a_model,config_list, cat_list,names_list_to_indices,get_train_objects_fname
+from data_hub import load_a_model, names_list_to_indices,get_train_objects_fname
 import cPickle
 from utils.miscellaneous import print_img,assert_folder,configure_logging,flatten, PerfStats,BWlists,compute_det_types
 import copy
@@ -37,6 +37,8 @@ os.environ['MXNET_CUDNN_AUTOTUNE_DEFAULT'] = '0'
 os.environ['MXNET_ENABLE_GPU_P2P'] = '0'
 cur_path = os.path.abspath(os.path.dirname(__file__))
 data_names = ['data', 'im_info']
+root = '/dccstor/jsdata1/dev/RepMet_project/RepMet_CVPR19'
+
 # ------------------------------------------------------------------------------------------------------
 
 
@@ -230,17 +232,6 @@ def show_boxes_loc(im, img_train_bbs, class_inds, scale = 1.0, save_file_path='t
         #                    bbox=dict(facecolor=color, alpha=0.5), fontsize=9, color='white')
     fig.savefig(save_file_path)
 
-def dictCompare( d1, d2 ):
-    diff_items = {k: np.max(np.abs(d1[k].asnumpy()-d2[k].asnumpy())) for k in d1 if (k in d2) and np.array_equal(d1[k].asnumpy().shape,d2[k].asnumpy().shape) and not np.array_equal(d1[k].asnumpy(),d2[k].asnumpy())}
-    diff_items_extra1 = {k: d1[k] for k in d1 if k not in d2}
-    diff_items_extra2 = {k: d2[k] for k in d2 if k not in d1}
-    diff_items_extra3 = {k: (d1[k].asnumpy().shape,d2[k].asnumpy().shape) for k in d1 if (k in d2) and not np.array_equal(d1[k].asnumpy().shape, d2[k].asnumpy().shape)}
-    print(diff_items)
-    print(diff_items_extra1.keys())
-    print(diff_items_extra2.keys())
-    print(diff_items_extra3)
-    return diff_items, diff_items_extra1, diff_items_extra2, diff_items_extra3
-
 def train_net(sym_instance, ctx, roidb, arg_params, aux_params, begin_epoch=0, end_epoch=10, lr=0.001, lr_step='4,6,20'):
     # mx.random.seed(3)
     # np.random.seed(3)
@@ -408,10 +399,12 @@ def parse_args():
     parser.add_argument('--ensure_quota',   default=0,        type=int, required=False, help='ensure the Nshot number of training objects, complementing from the pool if initial examples cannot be used')
     parser.add_argument('--Nshot',          default=1,      type=int, required=False, help='Number of samples per category')
     parser.add_argument('--Nway',           default=5,      type=int, required=False, help='Number of few-shot categories')
-    parser.add_argument('--Nreps_shot',     default=2,      type=int, required=False, help='Number of representatives per category in episode')
     parser.add_argument('--Nquery_cat',     default=10,     type=int, required=False, help='Number of query images per category')
     parser.add_argument('--Nepisodes',      default=500,    type=int, required=False, help='Number of episodes in benchmark')
-    parser.add_argument('--score_thresh',   default=0,      type=float, required=False, help='Score threshold for computing the perf. statistics and for display')
+    parser.add_argument('--Nreps_shot', default=2, type=int, required=False,      help='Number of representatives per category in episode')
+    parser.add_argument('--score_thresh',   default=0,      type=float, required=False, help='Score threshold for computing the perf. statistics')
+    parser.add_argument('--disp_score_thresh', default=0.05, type=float, required=False, help='Score threshold for display')
+
     parser.add_argument('--iou_thresh',     default=0.7,    type=float, required=False, help='IoU threshold for detecting training examples for representatives')
     parser.add_argument('--lr',             default=1e-4,   type=float, required=False, help='learning rate to use')
     parser.add_argument('--custom_exp',     default='',     type=str, required=False, help='additinal log filename suffix')
@@ -428,7 +421,6 @@ def parse_args():
     parser.add_argument('--size_filter',    default=0, type=int, required=False, help='remove rois with less than size_filter portion of the image')
     parser.add_argument('--nqc',            default=0, type=int, required=False, help='test on just the firts nqc query images (relevant when working on loadd episodes)')
     parser.add_argument('--display_nImgs',  default=0, type=int, required=False, help='print the image indices for classes used in the benchmark')
-    parser.add_argument('--class_nms',      default=0, type=int, required=False, help='Perform nms between detections of different classes')
     parser.add_argument('--validate',       default=0, type=int, required=False, help='set `1` to filter the input images according to validation lists')
     args = parser.parse_args()
     return args
@@ -453,61 +445,7 @@ def get_disp_data(im_name, scores, boxes, nms_dets,  score_thresh):
     im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
     return im, dets_nms
 
-def run_detection_new(sym, arg_params, aux_params, img_fname, img_cat, cat_indices,epi_cats_names,  exp_root, nImg,epi_num, score_thresh=args.score_thresh, scores_field=args.scores_field):
-    data, data_batch, scale_factor,im = prep_data_single(img_fname)
-    predictor = gen_predictor(sym, arg_params, aux_params, data)
-    #nms = gpu_nms_wrapper(config.TEST.NMS, args.gpu)
-    scales = [data_batch.data[i][1].asnumpy()[0, 2] for i in xrange(len(data_batch.data))]
-    scores, boxes, data_dict = im_detect(predictor, data_batch, data_names, scales, config, scores_field=scores_field)
-    boxes = boxes[0].astype('f')
-    scores = scores[0].astype('f')
-    #scores = scores[:, cat_indices]
-    #boxes = boxes[:, 4:8] if config.CLASS_AGNOSTIC else boxes[:, min(cat_indices) * 4:(max(cat_indices) + 1) * 4]
-
-
-    if args.topK>0:
-        #scores[:, 0] = 0
-        scores_seq = np.reshape(scores[:,1:], (-1))
-        scores_sorted = np.sort(-scores_seq)
-        thresh = -scores_sorted[args.topK - 1]
-        scores = (scores >= thresh) * scores
-    Nb= config.TEST.RPN_POST_NMS_TOP_N # = 2000
-    dets_nms = []
-    if args.class_nms==1:
-        for ic, c in enumerate(cat_indices):
-            cls_scores = scores[:, c, np.newaxis]
-            cls_boxes = boxes[:, 4:8] if config.CLASS_AGNOSTIC else boxes[:, c * 4:(c + 1) * 4]
-            cls_dets = np.hstack((cls_boxes, cls_scores))
-            all_dets = np.concatenate((all_dets,cls_dets),axis=0) if ic>0 else cls_dets
-        keep = nms_dets(all_dets)
-        for ic, c in enumerate(cat_indices):
-            keep_cls = [i for i in keep if i>= ic*Nb and i < (ic+1)*Nb]
-            cls_dets = all_dets[keep_cls]
-            cls_dets = cls_dets[cls_dets[:, -1] > score_thresh, :]
-            dets_nms.append(all_dets[keep_cls])
-
-    else:
-        for c in cat_indices:
-            cls_scores = scores[:, c, np.newaxis]
-            cls_boxes = boxes[:, 4:8] if config.CLASS_AGNOSTIC else boxes[:, c * 4:(c + 1) * 4]
-            cls_dets = np.hstack((cls_boxes, cls_scores))
-            keep = nms_dets(cls_dets)
-            cls_dets = cls_dets[keep, :]
-            cls_dets = cls_dets[cls_dets[:, -1] > score_thresh, :]
-            dets_nms.append(cls_dets) # detections per class
-
-    if args.display==1:
-        #save_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/data/test_img.png'
-        save_fname = os.path.join(exp_root, 'epi_{0}_query_img:{1}_cat:{2}.png'.format(epi_num, nImg,img_cat))
-
-        #im, dets_nms = get_disp_data(img_fname, scores, boxes, nms, thresh)
-        im = cv2.imread(img_fname)
-        im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-        show_boxes(im, dets_nms, epi_cats_names, save_file_path=save_fname)
-
-    return dets_nms
-
-def run_detection(sym, arg_params, aux_params, img_fname, img_cat, cat_indices,epi_cats_names,  exp_root, nImg,epi_num, score_thresh=args.score_thresh, scores_field=args.scores_field):
+def run_detection    (sym, arg_params, aux_params, img_fname, img_cat, cat_indices,epi_cats_names,  exp_root, nImg,epi_num, score_thresh=args.score_thresh, scores_field=args.scores_field):
     data, data_batch, scale_factor,im = prep_data_single(img_fname)
     predictor = gen_predictor(sym, arg_params, aux_params, data)
     #nms = gpu_nms_wrapper(config.TEST.NMS, args.gpu)
@@ -541,10 +479,10 @@ def run_detection(sym, arg_params, aux_params, img_fname, img_cat, cat_indices,e
         #save_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/data/test_img.png'
         save_fname = os.path.join(exp_root, 'epi_{0}_query_img:{1}_cat:{2}.png'.format(epi_num, nImg,img_cat))
 
-        #im, dets_nms = get_disp_data(img_fname, scores, boxes, nms, thresh)
-        im = cv2.imread(img_fname)
-        im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-        show_boxes(im, dets_nms, epi_cats_names, save_file_path=save_fname)
+        im, dets_disp = get_disp_data(img_fname, scores, boxes, nms_dets, args.disp_score_thresh)
+        # im = cv2.imread(img_fname)
+        # im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+        show_boxes(im, dets_disp, epi_cats_names, save_file_path=save_fname)
 
     return dets_nms
 
@@ -554,244 +492,21 @@ def get_workpoint():
     train_objects_fname = ''
     scores_fname = ''
 
-    # Imagenet-LOC ------------------------------------------------------
     if args.test_name == 'RepMet_inloc':  # RepMet detector
-        cfg_fname = './experiments/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8.yaml'
-        test_classes_fname ='./data/Imagenet_LOC/in_domain_categories.txt'  # 214 categories
-        roidb_fname = './data/Imagenet_LOC/voc_inloc_roidb.pkl'
+        cfg_fname = root+'/experiments/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8.yaml'
+        test_classes_fname =root+'/data/Imagenet_LOC/in_domain_categories.txt'  # 214 categories
+        roidb_fname = root+'/data/Imagenet_LOC/voc_inloc_roidb.pkl'
         model_case = args.test_name
         test_model_name = args.test_name
         # train_objects_fname, scores_fname = get_train_objects_fname('repmet_inloc')
 
-    if args.test_name == 'Vanilla_inloc':
-        cfg_fname = '/dccstor/jsdata1/dev/RepMet_project/RepMet_CVPR19/experiments/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_noemb.yaml'
-    # -----------------------------------------------------
     if args.test_name == 'Vanilla_inloc':  # 'nb19_214_train_hist_11':
-        cfg_fname = './experiments/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_noemb.yaml'
-        test_classes_fname = './data/Imagenet_LOC/in_domain_categories.txt'  # 214 categories
+        cfg_fname = root+'/experiments/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_noemb.yaml'
+        test_classes_fname = root+'/data/Imagenet_LOC/in_domain_categories.txt'  # 214 categories
+        roidb_fname = root + '/data/Imagenet_LOC/voc_inloc_roidb.pkl'
         model_case = args.test_name
         test_model_name = args.test_name
-        roidb_fname = '/dccstor/jsdata1/data/voc_inloc/voc_inloc_roidb.pkl'
         #train_objects_fname, scores_fname = get_train_objects_fname('vanilla_inloc')
-
-
-    if args.test_name == 'base_inloc':
-        cfg_fname = config_list(config_id=12)  # resnet_v1_101_coco_trainval_fpn_end2end_ohemFT.yaml,  resnet_v1_101_fpn_dcn_rcnn
-        test_classes_fname = cat_list(cat_id=100)  # 214 test Imagenet-LOC categories
-        model_case = 'FPN_DCN'
-        test_model_name = 'b_base'
-        roidb_fname = '/dccstor/jsdata1/data/voc_inloc/voc_inloc_roidb.pkl'
-        prep_reps_for_model = False
-        new_cats_to_beginning = True
-        train_objects_fname, scores_fname = get_train_objects_fname('vanilla_inloc')
-
-    if args.test_name == 'base_inloc50':
-        cfg_fname = config_list('fpn_dcn_rep_noemb')
-        test_classes_fname = cat_list(cat_id=200)  # 50 out of 214 test Imagenet-LOC categories
-        model_case = 'FPN_DCN'
-        test_model_name = 'b_base'
-        roidb_fname = '/dccstor/jsdata1/data/voc_inloc/voc_inloc_roidb.pkl'
-        new_cats_to_beginning = True
-
-    if args.test_name == 'base_inloc_DML':
-        cfg_fname = config_list('fpn_dcn_rep_noemb')
-        test_classes_fname = cat_list(cat_id=100)  # 214 test Imagenet-LOC categories
-        model_case = 'FPN_DCN'
-        test_model_name = 'b_base'
-        roidb_fname = '/dccstor/jsdata1/data/voc_inloc/voc_inloc_roidb.pkl'
-        train_objects_fname,scores_fname = get_train_objects_fname('repmet_inloc') # BG scores for validation
-
-        new_cats_to_beginning = True
-
-    if args.test_name == 'ExtEmb1_inloc':  # ExtEmb_inloc # 'TLemb19bM_214_train':
-        cfg_fname = config_list('19_TLemb')  # Vanilla fpn-dcn trained on Pascal + IN-LOC, with output emb vector (256)
-        test_classes_fname = cat_list(cat_id=100)  # 214 test Imagenet-LOC categories
-        model_case = 1162 # ExtEmb_7_fc1.pkl'
-        test_model_name = 'b_ExtEmb'
-        roidb_fname = '/dccstor/jsdata1/data/voc_inloc/voc_inloc_roidb.pkl'
-        train_objects_fname, scores_fname = get_train_objects_fname('ExtEmb')
-
-
-    if args.test_name == 'ExtEmb2_inloc':  # ExtEmb_inloc # 'TLemb19bM_214_train':
-        cfg_fname = config_list(config_id=101)  # Vanilla fpn-dcn trained on Pascal + IN-LOC, with output emb vector (256)
-        test_classes_fname = cat_list(cat_id=100)  # 214 test Imagenet-LOC categories
-        model_case = 1163 # ExtEmb_7_fc1.pkl'
-        test_model_name = 'b_ExtEmb'
-        roidb_fname = '/dccstor/jsdata1/data/voc_inloc/voc_inloc_roidb.pkl'
-
-    if args.test_name == 'ExtEmb3_inloc':  # ExtEmb_inloc # 'TLemb19bM_214_train':
-        cfg_fname = config_list(config_id=101)  # Vanilla fpn-dcn trained on Pascal + IN-LOC, with output emb vector (256)
-        test_classes_fname = cat_list(cat_id=100)  # 214 test Imagenet-LOC categories
-        model_case = 1164 # ExtEmb_7_fc1.pkl'
-        test_model_name = 'b_ExtEmb'
-        roidb_fname = '/dccstor/jsdata1/data/voc_inloc/voc_inloc_roidb.pkl'
-
-    if args.test_name == 'RepMet1k_inloc':  # 'eer_214_train_hist': # RepMet on IN-loc
-        cfg_fname = config_list(config_id=400)
-        model_case = 400
-        test_classes_fname = cat_list(100)  # 214 cats
-        test_model_name = 'b_RepMet1k'  # ''fpn_pascal_imagenet_15'
-        roidb_fname = '/dccstor/jsdata1/data/voc_inloc/voc_inloc_roidb.pkl'
-        # train_objects_fname = get_train_objects_fname(case=100)
-        # scores_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fpn/worst_objects/dev_36/BG_scores.pkl'
-
-    if args.test_name == 'RepMet_inloc50':  # 'eer_214_train_hist': # RepMet on IN-loc
-        cfg_fname = config_list(config_id=208)
-        model_case = 200
-        test_classes_fname = cat_list(200)  # 50 out of 214 cats
-        test_model_name = 'b_RepMet'  # ''fpn_pascal_imagenet_15'
-        roidb_fname = '/dccstor/jsdata1/data/voc_inloc/voc_inloc_roidb.pkl'
-        train_objects_fname, scores_fname = get_train_objects_fname('repmet_inloc')
-
-    if args.test_name == 'Vanilla_inloc50':  # 'nb19_214_train_hist_11':
-        cfg_fname = config_list('19_noemb')  # Vanilla fpn-dcn trained on Pascal + IN-LOC
-        model_case = '19'
-        test_classes_fname = cat_list(200)  # 50 out of 214 cats
-        test_model_name = 'b_Vanilla'  # ''fpn_pascal_imagenet_15'
-        roidb_fname = '/dccstor/jsdata1/data/voc_inloc/voc_inloc_roidb.pkl'
-        train_objects_fname = get_train_objects_fname(case=102)
-        scores_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fpn/worst_objects/dev_35/BG_scores.pkl'
-
-    # Imagenet-DET ------------------------------------------------------
-
-    if args.test_name == 'RepMet_indet_1': # IMagenet-DET split 1: training categories picked to contain the COCO categories
-        cfg_fname = config_list('15_test')
-        test_model_name = 'b_RepMet'
-        model_case = 'cfg_15_29' #  Pascal + 100 Imagenet-DET, trained on split1.
-
-        roidb_fname = '/dccstor/jsdata1/data/Imagenet_DET/imagenet_det_roidb_corr.pkl'
-        test_classes_fname = cat_list('indet_split1_test')  # Imagenet-DET, handpicked
-        train_objects_fname,scores_fname = get_train_objects_fname('repmet_indet') # BG scores for validation
-
-    if args.test_name == 'Vanilla_indet_1':
-        cfg_fname = config_list('15_Van')  # Vanilla fpn-dcn
-        test_model_name = 'b_Vanilla'
-        model_case = '15_van'  # Vanilla pretrained on Pascal+ split 1 of imagenet DET
-        roidb_fname = '/dccstor/jsdata1/data/Imagenet_DET/imagenet_det_roidb_corr.pkl'
-        test_classes_fname = cat_list('indet_split1_test')  # Imagenet-DET, handpicked
-        train_objects_fname, scores_fname = get_train_objects_fname('vanilla_indet')
-
-    if args.test_name == 'VanillaC_indet_1':
-        cfg_fname = config_list('FPN_DCN_test')  # Vanilla fpn-dcn
-        test_model_name = 'b_Vanilla'
-        model_case = 'FPN_DCN'  # Vanilla pretrained on coco
-        roidb_fname = '/dccstor/jsdata1/data/Imagenet_DET/imagenet_det_roidb_corr.pkl'
-        test_classes_fname = cat_list('indet_split1_test')
-        train_objects_fname, scores_fname = get_train_objects_fname('vanilla_indet')
-        new_cats_to_beginning = True
-
-
-    if args.test_name == 'base_indet2':
-        cfg_fname = config_list(config_id=12)  # resnet_v1_101_coco_trainval_fpn_end2end_ohemFT.yaml,  resnet_v1_101_fpn_dcn_rcnn
-        test_classes_fname = cat_list(112)  # Imagenet-DET, imagenet_det_second100_classes
-        model_case = 10
-        test_model_name = 'b_base'
-        roidb_fname = '/dccstor/jsdata1/data/Imagenet_DET/imagenet_det_roidb_corr.pkl'
-        test_classes_fname = cat_list(112)  # Imagenet-DET, imagenet_det_second100_classes
-        prep_reps_for_model = False
-        new_cats_to_beginning = True
-    #
-    # if args.test_name == 'RepMet_indet':
-    #     cfg_fname = config_list(216)  # cfg 15 test
-    #     test_model_name = 'b_RepMet'
-    #     model_case = 211  # Vanilla yaml 15 epoch 29  Pascal + 100 Imagenet-DET
-    #     roidb_fname = '/dccstor/jsdata1/data/Imagenet_DET/imagenet_det_roidb_corr.pkl'
-    #     test_classes_fname = cat_list(111)  # Imagenet-DET, handpicked
-    #     train_objects_fname = get_train_objects_fname(50)
-    #     scores_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fpn/RepMet_indet/BG_scores.pkl'
-    #
-    # if args.test_name == 'RepMet14_indet':
-    #     cfg_fname = config_list(214)  # cfg 14 test
-    #     test_model_name = 'b_RepMet'
-    #     model_case = 202  # Vanilla yaml 14 epoch 20  Pascal + 100 Imagenet-DET
-    #     roidb_fname = '/dccstor/jsdata1/data/Imagenet_DET/imagenet_det_roidb_corr.pkl'
-    #     test_classes_fname = cat_list(112)  # Imagenet-DET, imagenet_det_second100_classes
-    #     train_objects_fname = get_train_objects_fname(50)
-    #     scores_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fpn/RepMet_indet/BG_scores.pkl'
-    #
-    # if args.test_name == 'RepMet94_indet':
-    #     cfg_fname = config_list(214)  # cfg 14 test
-    #     test_model_name = 'b_RepMet'
-    #     model_case = 202  # Vanilla yaml 14 epoch 20  Pascal + 100 Imagenet-DET
-    #     roidb_fname = '/dccstor/jsdata1/data/Imagenet_DET/imagenet_det_roidb_corr.pkl'
-    #     test_classes_fname = cat_list(113)  # Imagenet-DET, imagenet_det_second94_classes
-    #     train_objects_fname = get_train_objects_fname(50)
-    #     scores_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fpn/RepMet_indet/BG_scores.pkl'
-    #
-
-
-    if args.test_name == 'Vanilla14_indet':
-        cfg_fname = config_list(8)  # Vanilla fpn-dcn
-        test_model_name = 'b_Vanilla'
-        model_case = 10  # Vanilla pretrained on coco
-        roidb_fname = '/dccstor/jsdata1/data/Imagenet_DET/imagenet_det_roidb_corr.pkl'
-        test_classes_fname = cat_list(112)  # Imagenet-DET, handpicked
-        is_fewshot = True
-        train_objects_fname = get_train_objects_fname(51)
-        scores_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fpn/Vanilla_indet/BG_scores.pkl'
-        new_cats_to_beginning = True
-
-    if args.test_name == 'Vanilla94_indet':
-        cfg_fname = config_list(8)  # Vanilla fpn-dcn
-        test_model_name = 'b_Vanilla'
-        model_case = 10  # Vanilla pretrained on coco
-        roidb_fname = '/dccstor/jsdata1/data/Imagenet_DET/imagenet_det_roidb_corr.pkl'
-        test_classes_fname = cat_list(113)  # Imagenet-DET, handpicked
-        is_fewshot = True
-        train_objects_fname = get_train_objects_fname(51)
-        scores_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fpn/Vanilla_indet/BG_scores.pkl'
-        new_cats_to_beginning = True
-
-    if args.test_name == 'base_indet':
-        cfg_fname = config_list(10)  # Vanilla fpn-dcn
-        test_model_name = 'b_base'
-        model_case = 10  # Vanilla pretrained on coco
-        roidb_fname = '/dccstor/jsdata1/data/Imagenet_DET/imagenet_det_roidb_corr.pkl'
-        test_classes_fname = cat_list(cat_id=111)  # Imagenet-DET, handpicked
-        is_fewshot = True
-        train_objects_fname = get_train_objects_fname(51)
-        scores_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fpn/Vanilla_indet/BG_scores.pkl'
-        new_cats_to_beginning = True
-
-    if args.test_name == 'RepMet_indet50':  # 'eer_indet14':
-        cfg_fname = config_list(config_id=214)  # cfg 14
-        test_model_name = 'a_RepMet'  # 'fpn_indet_eer_train'
-        model_case = 202  # cfg 14, epoch 20
-        roidb_fname = '/dccstor/jsdata1/data/Imagenet_DET/imagenet_det_roidb_corr.pkl'
-        test_classes_fname = cat_list(cat_id=211)  # 50 out of Imagenet-DET, handpicked - test 14
-        train_objects_fname = get_train_objects_fname(50)
-        scores_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fpn/RepMet_indet/BG_scores.pkl'
-
-    # Pascal VOC ---------------------------------------------------------
-    if args.test_name == 'RepMet_VOC':
-        cfg_fname = config_list(config_id=20)
-        model_case = 20
-        # cfg_fname = config_list(config_id=103)  # Vanilla fpn-dcn trained on Pascal + IN-LOC
-        # model_case = 303
-
-        test_classes_fname = cat_list(120)
-        roidb_fname = '/dccstor/jsdata1/dev/data/VOC_data/VOC12_trainval_roidb.pkl'
-        test_model_name = 'b_RepMet_VOC'
-
-    if args.test_name == 'Vanilla_VOC':
-        cfg_fname = config_list(config_id=21)
-        model_case = 21
-        # cfg_fname = config_list(config_id=103)  # Vanilla fpn-dcn trained on Pascal + IN-LOC
-        # model_case = 303
-
-        test_classes_fname = cat_list(120)
-        roidb_fname = '/dccstor/jsdata1/dev/data/VOC_data/VOC12_trainval_roidb.pkl'
-        test_model_name = 'b_Vanilla_VOC'
-
-    # COCO ----------------------------------------------------
-    if args.test_name == 'RepMet_coco_inloc50':  # 'eer_214_train_hist': # RepMet on IN-loc
-        cfg_fname = config_list(config_id=19)  # cfg 16
-        model_case = 19  # epoch 22 of cfg 16
-        test_classes_fname = cat_list(200)  # 50 out of 214 cats IN-loc
-        test_model_name = 'b_RepMet'  # ''fpn_pascal_imagenet_15'
-        roidb_fname = '/dccstor/jsdata1/data/voc_inloc/voc_inloc_roidb.pkl'
-        train_objects_fname = get_train_objects_fname(case=102)
-        scores_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/fpn/worst_objects/dev_35/BG_scores.pkl'
 
     return cfg_fname, model_case, test_classes_fname, test_model_name, roidb_fname,\
            train_objects_fname, scores_fname,prep_reps_for_model,new_cats_to_beginning
@@ -833,9 +548,9 @@ def get_datagen():
     return aug_data_generator
 
 def get_names(test_model_name):
-    exp_name = args.test_name+'_{0}shot_{1}way_{2}qpc_{3}val'
-    gen_root = './output/benchmarks'
-    exp_name_str = exp_name.format(args.Nshot, args.Nway, args.Nquery_cat,args.validate)
+    exp_name = args.test_name+'_{0}shot_{1}way_{2}qpc'
+    gen_root = root+'/output/benchmarks'
+    exp_name_str = exp_name.format(args.Nshot, args.Nway, args.Nquery_cat)
     episodes_fname = os.path.join(gen_root, exp_name_str + '_episodes.npz')
 
     run_name = exp_name_str
@@ -1060,9 +775,14 @@ def main(): # test_config
     start_episode =args.start_episode
     end_episode =args.Nepisodes
     if args.load_episodes == 1:
-        with open(episodes_fname,'rb') as fid:
-            episodes = cPickle.load(fid)
-        end_episode = len(episodes)
+        if os.path.exists(episodes_fname):
+            with open(episodes_fname,'rb') as fid:
+                episodes = cPickle.load(fid)
+            end_episode = len(episodes)
+        else:
+            args.gen_episodes = 1
+            args.load_episodes = 0
+
     if args.gen_episodes == 1:
         episodes = [{} for _ in range(args.Nepisodes)]
 
@@ -1150,36 +870,6 @@ def main(): # test_config
                     sys.exit('empty list of images for the category {0}'.format(cat))
                 while len(train_objects[cat])<args.Nshot:
                     train_nImg,train_objects = get_cat_nImg(train_nImg,train_objects,cat,epi_cats) # one attempt
-                    # nImg = random.sample(imgs_of_cat,1)[0]
-                    # if nImg not in train_nImg[cat]:
-                    #     is_valid = True
-                    #     if args.validate==1:
-                    #         epi_scores = []
-                    #         idx = np.where(train_objects_ar[:, 0] == nImg)[0].tolist()
-                    #         if len(idx) > 0:
-                    #             if len(BG_scores[idx]) > 0:
-                    #                 epi_scores += BG_scores[idx].tolist()
-                    #         if len(epi_scores) > 0 and max(epi_scores) > sc_thresh:
-                    #             is_valid = False
-                    #             logger.info('Ignoring nImg {0} with score {1:.3f}'.format(nImg, max(epi_scores)))
-                    #
-                    #     has_objects = False
-                    #     received_objects = roidb[nImg]['gt_classes'].tolist()
-                    #     for i_obj, rec_cat in enumerate(received_objects):
-                    #         if rec_cat not in epi_cats:
-                    #             continue
-                    #         if args.size_filter > 0:
-                    #             bbox = roidb[nImg]['boxes'][i_obj]
-                    #             height = bbox[3] - bbox[1]
-                    #             width = bbox[2] - bbox[0]
-                    #             if 100 * max(height / roidb[nImg]['height'], width / roidb[nImg]['width']) < args.size_filter:
-                    #                 continue
-                    #         has_objects = True
-                    #         train_objects[rec_cat] += [[nImg, i_obj]]
-                    #
-                    #     if is_valid and has_objects:
-                    #         train_nImg[cat]+=[nImg]
-
 
                 while len(query_images[cat])<args.Nquery_cat:
                     while True:
