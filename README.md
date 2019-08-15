@@ -91,10 +91,12 @@ A benchmark is determined by values of four arguments. for example,
 Here Nshot is number of samples per category, Nway is the number of few-shot categories, Nquery_cat is number of query (test) images per category, and Nepisodes is the number of episodes.
 By default, the algorithm loads an existing file with episodic test data (if available). If the set of episodes for the specified configuration, was not previously created, or if the argument --gen_episodes=1 is provided, the episodes file will be created (but no tests will run at this time).
 
-For example, to create a new benchmark with 3-shot, 4-way, 2 test samples per class, 2 episodes, run
+For example, to create a new benchmark with 3-shot, 4-way, 2 test samples per class, 2 episodes, run    
 `--test_name=RepMet_inloc --gen_episodes=1, --load_episodes=0, --Nshot=3 --Nway=4 --Nquery_cat=2 --Nepisodes=2`
-to create the benchmark and then run
+
+to create the benchmark and then run    
 `--test_name=RepMet_inloc --Nshot=3 --Nway=4 --Nquery_cat=2 --Nepisodes=2`
+
 to test it. Note that a separate benchmark file is produced for each test_case.
 
 ## Options and features of this code package
