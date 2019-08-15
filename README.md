@@ -43,6 +43,10 @@ The dataset information (images, Ground Truth boxes and classes) is given in a r
 
 Before the benchmark can be executed, all the image paths in the roidb structure need to be replaced; all the rest of the paths are in the format `./data/…`, they should work once the Box content is copied under the repository root `RepMet/`. 
 
+*Code package root:* 
+The main execution script is `few_shot_benchmark.py`. It contains pathes for all required files relative to the `root` folder, where the source soude is deployed. 
+The `root` string is hardcoded in line 39 of the `few_shot_benchmark.py`; please update it to your root folder before starting the work.
+
 ## Downloading Imagenet-LOC dataset
 The Imagenet-LOC dataset can be downloaded from `http://image-net.org/challenges/LSVRC/2017/download-images-1p39.php`, 
 Specifically, to download and untar the dataset from command line, run  

@@ -9,7 +9,7 @@ import _init_paths
 import argparse
 import sys
 import os
-sys.path.append("/dccstor/jsdata1/dev/RepMet/lib")
+#sys.path.append("/dccstor/jsdata1/dev/RepMet/lib")
 import cv2
 import mxnet as mx
 import numpy as np
@@ -21,7 +21,6 @@ from config.config import config, update_config
 from core.tester import im_detect,im_detect_feats, im_detect_feats_stats, Predictor
 from nms.nms import gpu_nms_wrapper
 from symbols import *
-from data_hub import load_a_model, names_list_to_indices,get_train_objects_fname
 import cPickle
 from utils.miscellaneous import print_img,assert_folder,configure_logging,flatten, PerfStats,BWlists,compute_det_types
 import copy
@@ -380,6 +379,17 @@ def gen_predictor(sym, arg_params, aux_params, data):
                           arg_params=arg_params, aux_params=aux_params)
     return predictor
 
+def names_list_to_indices(test_classes_fname,classes):
+    import numpy as np
+    with open(test_classes_fname, 'r') as fid:
+        requested_test_class_names = [x.strip().lower() for x in fid.readlines()]
+    #class name to index
+    Lclasses = []
+    for class_name in classes:
+        Lclasses+=[class_name.lower()]
+    requested_test_classes = [Lclasses.index(cls_name)+1 for cls_name in requested_test_class_names if cls_name in Lclasses]#
+    #requested_test_classes = np.sort(requested_test_classes)
+    return requested_test_classes,requested_test_class_names
 # =================================================================================================================================================
 
 def parse_args():
@@ -428,7 +438,6 @@ def parse_args():
 args = parse_args()
 nms_ovp_rois = gpu_nms_wrapper(args.nms_train, args.gpu)
 nms_dets = gpu_nms_wrapper(config.TEST.NMS, args.gpu)
-
 
 def run_detection    (sym, arg_params, aux_params, img_fname, img_cat, cat_indices,epi_cats_names,  exp_root, nImg,epi_num, score_thresh=args.score_thresh, scores_field=args.scores_field):
     data, data_batch, scale_factor,im = prep_data_single(img_fname)
@@ -483,7 +492,7 @@ def get_workpoint():
         roidb_fname = root+'/data/Imagenet_LOC/voc_inloc_roidb.pkl'
         model_case = args.test_name
         test_model_name = args.test_name
-        # train_objects_fname, scores_fname = get_train_objects_fname('repmet_inloc')
+
 
     if args.test_name == 'Vanilla_inloc':  # 'nb19_214_train_hist_11':
         cfg_fname = root+'/experiments/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_noemb.yaml'
@@ -491,7 +500,7 @@ def get_workpoint():
         roidb_fname = root + '/data/Imagenet_LOC/voc_inloc_roidb.pkl'
         model_case = args.test_name
         test_model_name = args.test_name
-        #train_objects_fname, scores_fname = get_train_objects_fname('vanilla_inloc')
+
 
     return cfg_fname, model_case, test_classes_fname, test_model_name, roidb_fname,\
            train_objects_fname, scores_fname,prep_reps_for_model,new_cats_to_beginning
@@ -677,6 +686,23 @@ def test_model(perf_stats,epi_cats,query_images,cat_indices,roidb,d,sym_ext, arg
             gt_boxes_test = np.asarray(gt_boxes_test)
             d = perf_stats.comp_epi_stats_m(d, q_dets, gt_boxes_test, gt_classes_test, epi_cats, args.ovthresh)
     return d
+
+def load_a_model(config,model_case=0):
+
+    # load a FPN reps model for yaml 8, epoch = 15, prep representative weights
+    if model_case == 'RepMet_inloc':
+        def_model = root+'/data/Imagenet_LOC/fpn_pascal_imagenet'
+        epoch = 15
+        arg_params, aux_params = load_param(def_model, epoch, process=True)
+
+    if model_case == 'Vanilla_inloc':
+        vanilla_model = root + '/data/Imagenet_LOC/fpn_pascal_imagenet_base'  # v
+        epoch = 11
+        arg_params, aux_params = load_param(vanilla_model, epoch, process=True)
+
+    n = config.network.EMBEDDING_DIM * config.network.REPS_PER_CLASS * (config.dataset.NUM_CLASSES - 1)
+    arg_params['fc_representatives_weight'] = 1000 * mx.nd.ones((n, 1))
+    return arg_params, aux_params
 
 def get_cat_nImg(train_nImg,train_objects, cat,epi_cats):
     imgs_of_cat = cls2img[cat]
