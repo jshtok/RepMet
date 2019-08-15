@@ -429,21 +429,6 @@ args = parse_args()
 nms_ovp_rois = gpu_nms_wrapper(args.nms_train, args.gpu)
 nms_dets = gpu_nms_wrapper(config.TEST.NMS, args.gpu)
 
-def get_disp_data(im_name, scores, boxes, nms_dets,  score_thresh):
-    dets_nms = []
-    for j in range(1, scores.shape[1]):
-        cls_scores = scores[:, j, np.newaxis]
-        cls_boxes = boxes[:, 4:8] if config.CLASS_AGNOSTIC else boxes[:, j * 4:(j + 1) * 4]
-        cls_dets = np.hstack((cls_boxes, cls_scores))
-        keep = nms_dets(cls_dets)
-        cls_dets = cls_dets[keep, :]
-        cls_dets = cls_dets[cls_dets[:, -1] > score_thresh, :]
-        dets_nms.append(cls_dets)
-
-    # load image
-    im = cv2.imread(im_name)
-    im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-    return im, dets_nms
 
 def run_detection    (sym, arg_params, aux_params, img_fname, img_cat, cat_indices,epi_cats_names,  exp_root, nImg,epi_num, score_thresh=args.score_thresh, scores_field=args.scores_field):
     data, data_batch, scale_factor,im = prep_data_single(img_fname)
@@ -476,12 +461,12 @@ def run_detection    (sym, arg_params, aux_params, img_fname, img_cat, cat_indic
     #     print(det.shape)
 
     if args.display==1:
-        #save_fname = '/dccstor/jsdata1/dev/Deformable-ConvNets/data/test_img.png'
         save_fname = os.path.join(exp_root, 'epi_{0}_query_img:{1}_cat:{2}.png'.format(epi_num, nImg,img_cat))
-
-        im, dets_disp = get_disp_data(img_fname, scores, boxes, nms_dets, args.disp_score_thresh)
-        # im = cv2.imread(img_fname)
-        # im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+        im = cv2.imread(img_fname)
+        im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+        dets_disp = [[] for _ in dets_nms]
+        for cls_idx, class_dets in enumerate(dets_nms):
+            dets_disp[cls_idx] = class_dets[np.where(class_dets[:,4]>args.disp_score_thresh)]
         show_boxes(im, dets_disp, epi_cats_names, save_file_path=save_fname)
 
     return dets_nms
