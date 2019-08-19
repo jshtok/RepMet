@@ -128,6 +128,7 @@ episode[' query_images'] – list of paths to query images of the episode
 episode[' query_gt'] – list of roidb entries corresp. to the query images   
 	
 ## License
+Copyright 2019 IBM Corp.
 This repository is released under the Apachi-2.0 license (see the LICENSE file for details)	
 ## References:
 [1] Leonid Karlinsky, Joseph Shtok, Sivan Harary, Eli Schwartz, Amit Aides, Rogerio Feris, Raja Giryes, Alex M. Bronstein, RepMet: Representative-based metric learning for classification and one-shot object detection. Accepted to CVPR 2019. https://arxiv.org/abs/1806.04728
