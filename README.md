@@ -35,7 +35,7 @@ d.	`pip install opencv-python`
 
 The file `requirements.txt` is found in the root of the repository.
 
-The additional files required for operating the repository are available at  `https://ibm.box.com/s/g7xcm0hkyec2rd4hixfbthke8lunsyrv`. The folders provided in 
+The additional files required for operating the repository are available at  `https://ibm.box.com/s/jbpddqmlmcjq4hnaw6rr10dn60wm4vl9` or at `https://drive.google.com/drive/folders/1MZ6HWQpR_Oseo5_v5gmrlAyubrPL-ciO?usp=sharing`. The folders provided in 
 this link ('data' and 'output') should be placed  under the RepMet root of the git package.
 The 'data' folder contains the pre-trained model and associated files, and the /output/benchmarks contains the the benchmark files 
 
@@ -136,6 +136,7 @@ episode[' query_images'] – list of paths to query images of the episode
 episode[' query_gt'] – list of roidb entries corresp. to the query images   
 	
 ## License
+Copyright 2019 IBM Corp.
 This repository is released under the Apachi-2.0 license (see the LICENSE file for details)	
 ## References:
 [1] Leonid Karlinsky, Joseph Shtok, Sivan Harary, Eli Schwartz, Amit Aides, Rogerio Feris, Raja Giryes, Alex M. Bronstein, RepMet: Representative-based metric learning for classification and one-shot object detection. Accepted to CVPR 2019. https://arxiv.org/abs/1806.04728
