@@ -105,6 +105,14 @@ to create the benchmark and then run
 
 to test it. Note that a separate benchmark file is produced for each test_case.
 
+## Full model training
+The code for pretraining the model on a large dataset of auxiliary categories is executed with the function `fpn_end2end_train_test.py`. Its
+ input argument is the path to configuration file, containing all the data, model and training parameters:
+
+`python ./experiments/fpn_end2end_train_test.py --cfg=./experiments/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8.yaml`
+
+The dataset for the training is defined in the DATASET section of the configuration .yaml file. 
+
 ## Options and features of this code package
 Please refer to the `parse_args()` routine in the  `few_shot_benchmark.py` for explanation on the various options available for execution.
 
@@ -118,7 +126,7 @@ The roidb object, loaded from file `data/Imagenet_LOC/voc_inloc_gt_roidb.pkl` is
 ### Structure of episodic data
 According to the concept of meta-learning, the training and evaluation of a few-shot detection engine is performed using subsets of the given large datasets, known as tasks or episodes.
 Each episode is an instance of a few-shot task that is comprised from a support set and query set, and contains data from Nway visual categories, each represented by Nshot examples (ROIs in the support set images). The query (evaluation) data consists of Nquery images per category, each containing one or more examples from this category (and possibly instances of other support set categories). The test data for the benchmark consists of Nepisodes such episodes, randomly drawn from the list of visual categories and images not seen during the offline training of the base model.
-The episodic data (in particular, that of RepMet paper benchmark) for varying experiments is stored in the folder data\Imagenet_LOC. Each episode data file contains the list of episode objects, where each episode is a dictionary with the following fields:
+The episodic data (in particular, that of RepMet paper benchmark) for varying experiments is stored in the folder data/Imagenet_LOC. Each episode data file contains the list of episode objects, where each episode is a dictionary with the following fields:
 episode['epi_cats'] – set of Nway class indices randomly picked from the dataset list
 
 
