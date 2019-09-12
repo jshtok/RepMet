@@ -1,8 +1,8 @@
 ---
 MXNET_VERSION: "mxnet"
-output_path: "./output/fpn/voc_imagenet"
+output_path: "./output/fpn/imagenet"
 symbol: resnet_v1_101_fpn_dcn_rcnn_oneshot_v3
-gpus: '4' #'0,1,2,3' #'0,1,5,7'
+gpus: '6' #'0,1,2,3' #'0,1,5,7'
 CLASS_AGNOSTIC: true
 SCALES:
 - 800
@@ -70,14 +70,12 @@ dataset:
   NUM_CLASSES: 122
   balance_classes: true
   num_ex_per_class: 200
-  max_num_extra_classes: 122
-  dataset: PascalVOC;ImageNet
-  dataset_path: "/dccstor/leonidka1/data/VOCdevkit;/dccstor/leonidka1/data/imagenet/ILSVRC"
-  cls_filter_files: './data/Imagenet_LOC/inloc_cls2id_map.pkl:./data/Imagenet_LOC/inloc_cls2id_map.pkl/inloc_first101_categories.txt'
-  image_set: 2007_trainval+2012_trainval;train_loc
-  per_category_epoch_max: 0;10
+  dataset: ImageNet
+  dataset_path: "/dccstor/leonidka1/data/imagenet/ILSVRC"
+  image_set: train_loc
+  per_category_epoch_max: 10
   root_path: "./data"
-  test_image_set: ;val_partial
+  test_image_set: val_partial
   proposal: rpn
 TRAIN:
   UPDATE_REPS_VIA_CLUSTERING: true

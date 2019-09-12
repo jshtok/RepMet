@@ -15,7 +15,7 @@ os.environ['MXNET_ENABLE_GPU_P2P'] = '0'
 # os.environ['MXNET_ENGINE_TYPE'] = 'NaiveEngine'
 
 this_dir = os.path.dirname(__file__)
-sys.path.insert(0, os.path.join(this_dir, '..', '..', 'fpn'))
+sys.path.insert(0, os.path.join(this_dir, '..', 'fpn'))
 
 import matplotlib
 matplotlib.use('agg')

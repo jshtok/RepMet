@@ -111,7 +111,7 @@ The code for pretraining the model on a large dataset of auxiliary categories is
 
 `python ./experiments/fpn_end2end_train_test.py --cfg=./experiments/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8.yaml`
 
-The dataset for the training is defined in the DATASET section of the configuration .yaml file. 
+The dataset for the training is defined in the DATASET section of the configuration .yaml file. The code can use multiple GPUs. List of their ordinals is given in the 'gpus' argument in the `.yaml` file.
 
 ## Options and features of this code package
 Please refer to the `parse_args()` routine in the  `few_shot_benchmark.py` for explanation on the various options available for execution.
