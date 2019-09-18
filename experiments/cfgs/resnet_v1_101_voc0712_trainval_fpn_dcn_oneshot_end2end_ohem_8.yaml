@@ -13,8 +13,7 @@ default:
   frequent: 10
   kvstore: device
 network:
-#  pretrained: "/dccstor/jsdata1/dev/Deformable-ConvNets/model/fpn_dcn_coco" #"./model/pretrained_model/resnet_v1_101"
-  pretrained: '/dccstor/jsdata1/dev/RepMet/model/pretrained_model/resnet_v1_101' # "./model/pretrained_model/resnet_v1_101"
+  pretrained: "./data/fpn_dcn_coco" 
   pretrained_epoch: 0
   pretrained_weights_are_priority: true
   PIXEL_MEANS:
