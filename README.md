@@ -35,7 +35,7 @@ d.	`pip install opencv-python`
 
 The file `requirements.txt` is found in the root of the repository.
 
-The additional files required for operating the repository are available at  `https://ibm.box.com/s/jbpddqmlmcjq4hnaw6rr10dn60wm4vl9` or at `https://drive.google.com/drive/folders/1MZ6HWQpR_Oseo5_v5gmrlAyubrPL-ciO?usp=sharing`. The folders provided in 
+The additional files required for operating the repository are available at `https://drive.google.com/drive/folders/1MZ6HWQpR_Oseo5_v5gmrlAyubrPL-ciO?usp=sharing`. The folders provided in 
 this link ('data' and 'output') should be placed  under the RepMet root of the git package.
 The 'data' folder contains the pre-trained model and associated files, and the /output/benchmarks contains the the benchmark files 
 
@@ -112,7 +112,7 @@ The code for pretraining the model on a large dataset of auxiliary categories is
 `python ./experiments/fpn_end2end_train_test.py --cfg=./experiments/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8.yaml`
 
 The datasets for the training is defined in the DATASET section of the configuration .yaml file. In the config file present in the command above, two datasets (PascalVOC;ImageNet) are used, and all related fields ahave two corresponding values, separated by `;`  
-
+The restriction of the model to a subset of all the classes is enabled via the `DATASET.cls_filter_files` argument, where pathes to files with class name-to-id LUT and the list of selected classes are provided.  
 The code can use multiple GPUs. List of their ordinals is given in the 'gpus' argument in the `.yaml` file.
 
 ## Options and features of this code package
