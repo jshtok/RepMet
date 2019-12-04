@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteMappingsManager">
+    <list>
+      <list>
+        <remote-mappings server-id="python@sftp://josephs@dccxc326.pok.ibm.com:22/dccstor/jsdata1/Anaconda3_x86_64/envs/p2.7_mxnet1.0.0/bin/python">
+          <settings>
+            <list>
+              <mapping local-root="$PROJECT_DIR$" remote-root="/dccstor/jsdata1/dev/RepMet_project/RepMet_CVPR19" />
+            </list>
+          </settings>
+        </remote-mappings>
+      </list>
+    </list>
+  </component>
+</project>

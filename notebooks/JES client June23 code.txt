@@ -1,0 +1,371 @@
+
+
+
+
+
+Jupyter Notebook
+JES client Dernière Sauvegarde : 11/04/2019 Échec de la sauvegarde automatique ! Current Kernel Logo
+
+Python 2
+
+    Fichier
+    Édition
+    Affichage
+    Insérer
+    Cellule
+    Noyau
+    Widgets
+    Aide
+
+Test the JES Server
+
+This notebook is intended for testing the JES server.
+
+If running the service without a reverse proxy (e.g. nginx or localtunnel) the notebook should be run on the same node as the JES server.
+
+%matplotlib inline
+
+import cv2
+
+from glob import glob
+
+import matplotlib.pyplot as plt
+
+import numpy as np
+
+np.set_printoptions(precision=2)
+
+import os
+
+import pickle
+
+import requests
+
+import json
+
+def display_dets(det_data):
+
+    fig = plt.figure(1)
+
+    for det in det_data:
+
+        bbox = det['location']
+
+        ldata = det['class_info']
+
+        left = int(bbox['left'])
+
+        top = int(bbox['top'])
+
+        right = left+int(bbox['width'])
+
+        bottom = top+ int(bbox['height'])
+
+        scores= ldata['scores'][1:-1].split(' ')
+
+        scores = [sc.replace(',','') for sc in scores]
+
+        scores = [float(sc) for sc in scores if len(sc)>0]
+
+        labels = ldata['labels']
+
+        pn = ldata['pn']
+
+        if pn=='p':
+
+            cv2.rectangle(img, (left,top),(right, bottom)
+
+                      ,(255, 0, 0),4)  
+
+        else:
+
+            cv2.rectangle(img, (left,top),(right, bottom)
+
+                      ,(0,255, 0),4)  
+
+​
+
+        text = '{0} - {1:.3f}'.format(labels[0],scores[0])
+
+        if pn=='p':
+
+            cv2.rectangle(img, (left, top-15), (left+250, top+15),(255,255,255),cv2.FILLED)
+
+            cv2.putText(img, text, (left, top), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color=(0, 0, 0), thickness=2)
+
+        else:
+
+            cv2.rectangle(img, (left, bottom-15), (left+250,bottom+15),(255,255,255),cv2.FILLED)
+
+            cv2.putText(img, text, (left, bottom), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color=(0, 0, 0), thickness=2)
+
+    #plt.cla()
+
+    #plt.axis("off")
+
+    plt.figure(figsize=(18, 18))
+
+    plt.imshow(img)
+
+​
+
+Path to Images
+
+# IMG_PATH = '/home/eris-user/docker_pkg/mount/test_images/1007_160000000000506_top.jpg'
+
+# IMG_PATH = '/home/eris-user/docker_pkg/mount/test_images/1007_10000000003073_top.jpg'
+
+​
+
+#IMG_PATH = '/home/eris-user/docker_pkg/mount/test_images/Round20180405/1007_14916_top.jpg'
+
+#IMG_PATH = '/home/eris-user/docker_pkg/mount/test_images/SmartFlow_Results/15481_top.jpg'
+
+#IMG_PATH = '/home/eris-user/docker_pkg/mount/test_images/SmartFlow_Results/15512_top.jpg'
+
+#IMG_PATH = '/home/eris-user/docker_pkg/mount/test_images/SmartFlow_Results/15488_top.jpg'
+
+IMG_PATH = '/home/eris-user/docker_pkg/mount/test_images/SmartFlow_Results/160000000000344_top.jpg'
+
+#IMG_PATH = '/home/eris-user/docker_pkg/mount/test_images/SmartFlow_Results/15771_top.jpg'
+
+Server Configuration
+
+# When running localy:
+
+SERVER_URL = "http://localhost:5000"
+
+​
+
+# When running from a remote node (requires some reverse proxying.)
+
+#SERVER_URL = "http://dccxc169.pok.ibm.com:8080"
+
+Detection on image
+
+Run the detection task on single image.
+
+url = "{}/detect_on_image".format(SERVER_URL)
+
+disp_thresh =0.5
+
+num_candidates=2
+
+det_engines= 1# 7 [111] - permanent, daily, container detections. det_engines=1 [001] just permanent, det_engines=5 [101] permanent and daily, and so on
+
+#reply = requests.post(url, data=files)
+
+reply = requests.post(url, files={'image': open(IMG_PATH, 'rb')},data={'disp_thresh':disp_thresh,'num_candidates':num_candidates,'det_engines':det_engines})
+
+​
+
+print("Reply status: {}\nReply content:\n{}".format(reply.status_code, reply.text))
+
+[{"location": {"width": "268", "top": "192", "left": "700", "height": "230"}, "class_info": {"ords": [85, 68], "labels": ["PRD-G-83", "PRD-G-223"], "pn": "p", "scores": "[9.7806e-01 3.8363e-04]"}}, {"location": {"width": "468", "top": "122", "left": "106", "height": "665"}, "class_info": {"ords": [103, 119], "labels": ["PRD-G-1705", "CLC-G-222"], "pn": "p", "scores": "[9.6182e-01 8.2642e-04]"}}]
+
+Visualize the detection
+
+img = cv2.cvtColor(cv2.imread(IMG_PATH), cv2.COLOR_BGR2RGB)
+
+​
+
+det_data = json.loads(reply.text)
+
+display_dets(det_data)
+
+<Figure size 432x288 with 0 Axes>
+
+### detection on scene
+
+TOP_IMG_PATH = '/home/eris-user/docker_pkg/mount/test_images/15474_top.jpg'
+
+LEFT_IMG_PATH = '/home/eris-user/docker_pkg/mount/test_images/15474_left.jpg'
+
+RIGHT_IMG_PATH = '/home/eris-user/docker_pkg/mount/test_images/15474_right.jpg'
+
+url = "{}/detect_on_scene".format(SERVER_URL)
+
+disp_thresh =0.1
+
+num_candidates=1
+
+det_engines= 1# 7 [111] - permanent, daily, container detections. det_engines=1 [001] just permanent, det_engines=5 [101] permanent and daily, and so on
+
+​
+
+reply = requests.post(url, files={'top_image': open(TOP_IMG_PATH, 'rb'),'left_image': open(LEFT_IMG_PATH, 'rb'),'right_image': open(RIGHT_IMG_PATH, 'rb')},data={'disp_thresh':disp_thresh,'num_candidates':num_candidates,'det_engines':det_engines})
+
+​
+
+print("Reply status: {}\nReply content:\n{}".format(reply.status_code, reply.text))
+
+​
+
+Reply status: 200
+Reply content:
+[{"location": {"width": "246", "top": "461", "left": "231", "height": "310"}, "class_info": {"ords": [68], "labels": ["PRD-G-223"], "pn": "p", "scores": "[0.6214]"}}]
+
+# visualize
+
+img = cv2.cvtColor(cv2.imread(TOP_IMG_PATH), cv2.COLOR_BGR2RGB)
+
+​
+
+det_data = json.loads(reply.text)
+
+display_dets(det_data)
+
+<Figure size 432x288 with 0 Axes>
+
+Visualize a saved detection result
+
+for det in det_data:
+
+    ldata = det['class_info']
+
+    scores= ldata['scores'][1:-1].split(' ')
+
+    scores = [sc.replace(',','') for sc in scores]
+
+    scores = [float(sc) for sc in scores if len(sc)>0]
+
+    print(scores)
+
+    labels = ldata['labels']
+
+    print(labels)
+
+    print('------------')
+
+[0.6214]
+[u'PRD-G-223']
+------------
+
+display saved detections data
+
+IMGTOLOAD_PATH = '/home/eris-user/docker_pkg/mount/test_images/SmartFlow_Results/15511_top.jpg'
+
+JSONTOLOAD_PATH = '/home/eris-user/docker_pkg/mount/test_images/SmartFlow_Results/15511_analyse.json'
+
+​
+
+img = cv2.cvtColor(cv2.imread(IMGTOLOAD_PATH), cv2.COLOR_BGR2RGB)
+
+​
+
+det_data = json.load(open(JSONTOLOAD_PATH, 'rU'))
+
+display_dets(det_data)
+
+<Figure size 432x288 with 0 Axes>
+
+Daily training
+
+This will submit the training task for daily products. Note that the task returns immediately (not waiting for the training session to end) but uploading the zip file takes time (~30 seconds on the CCC).
+
+ZIP_PATH = "/home/eris-user/docker_pkg/mount/test_images/Apr_17_17_trdata.zip"
+
+#ZIP_PATH = "/home/eris-user/docker_pkg/mount/test_images/data_enrolment_20190529_140657.zip"
+
+#ZIP_PATH = "/home/eris-user/docker_pkg/mount/test_images/data_enrolment_20190524_182910.zip"
+
+​
+
+​
+
+files = {'zip_file': open(ZIP_PATH, 'rb')}
+
+url = "{}/train_novel".format(SERVER_URL)
+
+​
+
+reply = requests.post(url, files=files, data={'novel_train_type':2})
+
+print("Reply status: {}\nReply content:\n{}".format(reply.status_code, reply.text))
+
+Reply status: 200
+Reply content:
+null
+
+Stop daily training
+
+url = "{}/train_novel".format(SERVER_URL)
+
+reply = requests.delete(url)
+
+Querying Training Status
+
+url = "{}/train_novel".format(SERVER_URL)
+
+reply = requests.get(url)
+
+print("Reply status: {}\nReply content:\n{}".format(reply.status_code, reply.text))
+
+Reply status: 200
+Reply content:
+{"status": "STOPPED", "msg": "Last training session was stopped by signal when running gen_reps."}
+
+Permanent training
+
+url = "{}/train_perm".format(SERVER_URL)
+
+train_config_fname='/vol1/m_configs/cfg_JES_pilot_perm_training_docker.yaml'
+
+reply = requests.post(url,data={'train_config_fname':train_config_fname})
+
+print("Reply status: {}\nReply content:\n{}".format(reply.status_code, reply.text))
+
+Reply status: 200
+Reply content:
+null
+
+Stop permanent training
+
+url = "{}/train_perm".format(SERVER_URL)
+
+reply = requests.delete(url)
+
+Query training status
+
+url = "{}/train_perm".format(SERVER_URL)
+
+reply = requests.get(url)
+
+print("Reply status: {}\nReply content:\n{}".format(reply.status_code, reply.text))
+
+Test on folder with annotations
+
+# test on annotated folder
+
+test_config_fname = '/vol1/m_configs/cfg_JES_pilot_perm_evaluation_docker.yaml'        
+
+model_type = 1 #1 - perm   2 - Novl
+
+url = "{}/test_on_annotated_folder".format(SERVER_URL)
+
+​
+
+reply = requests.post(url,data={'test_config_fname':test_config_fname,'model_type':model_type})
+
+print("Reply status: {}\nReply content:\n{}".format(reply.status_code, reply.text))
+
+Reply status: 200
+Reply content:
+null
+
+Score normalization
+
+url = "{}/build_score_normalization".format(SERVER_URL)
+
+test_config_fname = '/vol1/m_configs/cfg_JES_pilot_score_norm_docker.yaml'
+
+classes_list_fname = 'JES_pilot_foods_classes.txt'
+
+reply = requests.post(url,data={'test_config_fname':test_config_fname,'classes_list_fname':classes_list_fname})
+
+print("Reply status: {}\nReply content:\n{}".format(reply.status_code, reply.text))
+
+Reply status: 200
+Reply content:
+null
+
