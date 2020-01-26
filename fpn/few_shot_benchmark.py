@@ -493,7 +493,12 @@ def get_workpoint():
         model_case = args.test_name
         test_model_name = args.test_name
 
-
+    if args.test_name == 'RepMet_inloc_re':  # RepMet detector
+        cfg_fname = root+'/experiments/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8_orig.yaml'
+        test_classes_fname =root+'/data/Imagenet_LOC/in_domain_categories.txt'  # 214 categories
+        roidb_fname = root+'/data/Imagenet_LOC/voc_inloc_roidb.pkl'
+        model_case = args.test_name
+        test_model_name = args.test_name
     if args.test_name == 'Vanilla_inloc':  # 'nb19_214_train_hist_11':
         cfg_fname = root+'/experiments/cfgs/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_19_noemb.yaml'
         test_classes_fname = root+'/data/Imagenet_LOC/in_domain_categories.txt'  # 214 categories
@@ -693,6 +698,10 @@ def load_a_model(config,model_case=0):
     if model_case == 'RepMet_inloc':
         def_model = root+'/data/Imagenet_LOC/fpn_pascal_imagenet'
         epoch = 15
+        arg_params, aux_params = load_param(def_model, epoch, process=True)
+    if model_case == 'RepMet_inloc_re':
+        def_model = root+'/output/fpn/voc_imagenet/resnet_v1_101_voc0712_trainval_fpn_dcn_oneshot_end2end_ohem_8_orig/2007_trainval+2012_trainval_train_loc/fpn_pascal_imagenet'
+        epoch = 22
         arg_params, aux_params = load_param(def_model, epoch, process=True)
 
     if model_case == 'Vanilla_inloc':
