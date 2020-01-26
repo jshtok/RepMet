@@ -56,7 +56,7 @@ def disp_dets2(img,dets,save_file_path):
     plt.imshow(img_d)
     #plt.figure(figsize=(28, 28))
     fig.savefig(save_file_path)
-    
+
 def test_on_query_image(fs_serv,test_img_fname,score_thresh=0.1,det_engines=1,figure_factor=2.2,FontScale=2.3):
     img = cv2.imread(test_img_fname, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
 
