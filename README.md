@@ -35,7 +35,7 @@ d.	`pip install opencv-python`
 
 The file `requirements.txt` is found in the root of the repository.
 
-The additional files required for operating the repository are available at `https://drive.google.com/drive/folders/1MZ6HWQpR_Oseo5_v5gmrlAyubrPL-ciO?usp=sharing`. The folders provided in 
+The additional files required for operating the repository are available at `https://ibm.box.com/s/jjpmk8nzt8jhi6qzhmoiwsq8n0af0sc4`. The folders provided in 
 this link ('data' and 'output') should be placed  under the RepMet root of the git package.
 The 'data' folder contains the pre-trained model and associated files, and the /output/benchmarks contains the the benchmark files 
 
